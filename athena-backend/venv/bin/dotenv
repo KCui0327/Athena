@@ -1,6 +1,4 @@
-#!/bin/sh
-'''exec' "/Users/lizaabraham/Desktop/GenAI Hackathon/Athena/athena-backend/venv/bin/python3" "$0" "$@"
-' '''
+#!/Users/ambroseling/Projects/Athena/athena-backend/venv/bin/python3.13
 # -*- coding: utf-8 -*-
 import re
 import sys
