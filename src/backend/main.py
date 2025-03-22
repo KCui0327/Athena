@@ -1,14 +1,13 @@
 import os
 from dotenv import load_dotenv
+
 # Load .env variables
 load_dotenv()
 
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from services.summarizer import summarize_text
-from services.ocr_mistral import extract_text_from_file
-from services.gemini import Gemini, GeminiModel, GeminiEmbeddingModel
-
+from src.backend.services.ocr_mistral import extract_text_from_file
+from src.backend.services.gemini_client import Gemini, GeminiModel, GeminiEmbeddingModel
 
 app = FastAPI()
 gemini = Gemini(os.getenv('GEMINI_API_KEY'), GeminiModel.FLASH, GeminiEmbeddingModel.EMBEDDING)
@@ -38,3 +37,8 @@ async def upload_document(file: UploadFile = File(...)):
         f.write(contents)
     extracted_text = extract_text_from_file(file_path)
     return {"extracted_text": extracted_text}
+
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000)

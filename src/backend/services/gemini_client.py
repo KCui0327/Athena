@@ -46,13 +46,19 @@ class Gemini:
         except Exception as e:
             return f"Error during generation: {str(e)}"
         
-    def generate_summary_from_video(self, text:str):
+    def generate_summary_from_video(self, video_url:str):
         try:
+            # Create a proper request with the video URL
             contents = [
-                "Summarize this video.",
-                Part.from_uri("https://www.youtube.com/watch?v=aircAruvnKk&t=1s&ab_channel=3Blue1Brown", "video/mp4"),
+                {
+                    "role": "user",
+                    "parts": [
+                        {"text": "Summarize this video."},
+                        {"uri": video_url, "mime_type": "video/mp4"}
+                    ]
+                }
             ]
-            return self.client.models.generate_content(model=self.model, contents=contents)
+            return self.client.models.generate_content(model=self.model.value, contents=contents)
         except Exception as e:
             return f"Error during generation: {str(e)}"
 
@@ -80,14 +86,19 @@ class Gemini:
     def cosine_similarity(self, embedding1:list[float], embedding2:list[float]):
         try:
             cos_sim = dot(embedding1, embedding2)/(norm(embedding1)*norm(embedding2))
+            print(f"cos_sim: {cos_sim}, type: {type(cos_sim)}")
             return cos_sim
         except Exception as e:
             return f"Error during generation: {str(e)}"
 
 if __name__ == "__main__":
-    gemini = Gemini(os.getenv('GEMINI_API_KEY'), GeminiModel.FLASH, GeminiEmbeddingModel.EMBEDDING)
-    print(gemini.generate_summary("Linear regresion is a type of regression analysis that models the relationship between a dependent variable and one or more independent variables. It is a simple and effective method for predicting outcomes based on input variables."))
+    # gemini = Gemini(os.getenv('GEMINI_API_KEY'), GeminiModel.FLASH, GeminiEmbeddingModel.EMBEDDING)
+    # print(gemini.generate_summary("Linear regresion is a type of regression analysis that models the relationship between a dependent variable and one or more independent variables. It is a simple and effective method for predicting outcomes based on input variables."))
 
     # embedding1 = gemini.generate_embedding("Linear regresion is a type of regression analysis that models the relationship between a dependent variable and one or more independent variables. It is a simple and effective method for predicting outcomes based on input variables.")
     # embedding2 = gemini.generate_embedding("I like apples")
     # print(gemini.cosine_similarity(embedding1, embedding2))
+
+
+    gemini = Gemini(os.getenv('GEMINI_API_KEY'), GeminiModel.FLASH, GeminiEmbeddingModel.EMBEDDING)
+    print(gemini.generate_summary_from_video("https://www.youtube.com/watch?v=aircAruvnKk&t=1s&ab_channel=3Blue1Brown"))

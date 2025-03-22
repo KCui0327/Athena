@@ -1,1 +1,6 @@
 .terraform
+src/backend/services/venv/
+src/backend/services/chunks/
+src/backend/services/downloads/
+.env
+__pycache__/
