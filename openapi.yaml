@@ -1,0 +1,25 @@
+swagger: '2.0'
+info:
+  title: Athena API
+  description: API for Athena application
+  version: 1.0.0
+host: api-gateway-url
+schemes:
+  - https
+produces:
+  - application/json
+paths:
+  /hello:
+    get:
+      summary: Hello World endpoint
+      operationId: hello
+      x-google-backend:
+        address: https://your-backend-url/hello
+      responses:
+        '200':
+          description: A successful response
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
