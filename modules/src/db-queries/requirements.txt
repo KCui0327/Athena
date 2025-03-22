@@ -1,0 +1,5 @@
+functions-framework==3.*
+flask==2.*
+sqlalchemy==2.*
+pg8000==1.*
+google-cloud-secretmanager==2.*

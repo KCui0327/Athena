@@ -1,0 +1,296 @@
+swagger: '2.0'
+info:
+  title: Athena GenAI API
+  description: API for Athena GenAI application with Vertex AI, AlloyDB, and Firebase integration
+  version: 1.0.0
+host: athena-gateway-{hostname}.apigateway.genai-genesis-454423.cloud.goog
+schemes:
+  - https
+produces:
+  - application/json
+consumes:
+  - application/json
+paths:
+  # Database Queries Service
+  /db/query:
+    get:
+      summary: Execute a read-only query on AlloyDB
+      operationId: readQuery
+      x-google-backend:
+        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/db-query
+      parameters:
+        - name: sql
+          in: query
+          required: true
+          type: string
+          description: SQL SELECT query to execute
+      responses:
+        '200':
+          description: Query results
+          schema:
+            type: object
+            properties:
+              results:
+                type: array
+                items:
+                  type: object
+        '400':
+          description: Bad request or invalid query
+        '500':
+          description: Server error
+
+  /db/execute:
+    post:
+      summary: Execute a write operation on AlloyDB
+      operationId: writeQuery
+      x-google-backend:
+        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/db-query
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - sql
+            properties:
+              sql:
+                type: string
+              params:
+                type: object
+      responses:
+        '200':
+          description: Execution results
+          schema:
+            type: object
+            properties:
+              rowsAffected:
+                type: integer
+        '400':
+          description: Bad request or invalid query
+        '500':
+          description: Server error
+
+  /db/tables:
+    get:
+      summary: List all tables in the database
+      operationId: listTables
+      x-google-backend:
+        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/db-query
+      responses:
+        '200':
+          description: List of tables
+          schema:
+            type: object
+            properties:
+              tables:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: Server error
+
+  /db/table/{tableName}:
+    get:
+      summary: Get schema for a specific table
+      operationId: getTableSchema
+      x-google-backend:
+        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/db-query
+      parameters:
+        - name: tableName
+          in: path
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Table schema
+          schema:
+            type: object
+            properties:
+              table:
+                type: string
+              columns:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    type:
+                      type: string
+        '500':
+          description: Server error
+
+  # Storage API Service
+  /storage/files:
+    get:
+      summary: List files in the storage bucket
+      operationId: listFiles
+      x-google-backend:
+        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/storage-api
+      responses:
+        '200':
+          description: List of files
+          schema:
+            type: object
+            properties:
+              files:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: Server error
+
+  /storage/upload:
+    post:
+      summary: Get signed URL for file upload
+      operationId: getUploadUrl
+      x-google-backend:
+        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/storage-api
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - filename
+            properties:
+              filename:
+                type: string
+      responses:
+        '200':
+          description: Signed URL for upload
+          schema:
+            type: object
+            properties:
+              upload_url:
+                type: string
+        '400':
+          description: Bad request
+        '500':
+          description: Server error
+
+  # Model Inference Service
+  /ai/text:
+    post:
+      summary: Generate text using Vertex AI
+      operationId: generateText
+      x-google-backend:
+        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/model-inference
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - prompt
+            properties:
+              prompt:
+                type: string
+              parameters:
+                type: object
+                properties:
+                  temperature:
+                    type: number
+                  max_output_tokens:
+                    type: integer
+                  top_p:
+                    type: number
+                  top_k:
+                    type: integer
+      responses:
+        '200':
+          description: Generated text
+          schema:
+            type: object
+            properties:
+              text:
+                type: string
+              safetyAttributes:
+                type: object
+        '400':
+          description: Bad request
+        '500':
+          description: Server error
+
+  /ai/image:
+    post:
+      summary: Generate image using Vertex AI
+      operationId: generateImage
+      x-google-backend:
+        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/model-inference
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - prompt
+            properties:
+              prompt:
+                type: string
+              parameters:
+                type: object
+                properties:
+                  sample_count:
+                    type: integer
+                  seed:
+                    type: integer
+      responses:
+        '200':
+          description: Generated images
+          schema:
+            type: object
+            properties:
+              images:
+                type: array
+                items:
+                  type: string
+              prompt:
+                type: string
+        '400':
+          description: Bad request
+        '500':
+          description: Server error
+
+  /ai/analyze:
+    post:
+      summary: Analyze image content
+      operationId: analyzeImage
+      x-google-backend:
+        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/model-inference
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - image
+            properties:
+              image:
+                type: string
+                description: Base64-encoded image data
+              type:
+                type: string
+                enum: [objects, labels, text]
+                default: objects
+      responses:
+        '200':
+          description: Analysis results
+          schema:
+            type: object
+        '400':
+          description: Bad request
+        '500':
+          description: Server error
+
+securityDefinitions:
+  api_key:
+    type: apiKey
+    name: key
+    in: query
+
