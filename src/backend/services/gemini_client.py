@@ -25,12 +25,6 @@ class Gemini:
         self.api_key = api_key
         self.client = genai.Client(api_key=self.api_key)
 
-    def generate_text(self, prompt:str):
-        try:
-            return self.client.models.generate_content(model=self.model, contents=prompt)
-        except Exception as e:
-            return f"Error during generation: {str(e)}"
-
     def generate_quiz(self, text:str):
         try:
             prompt = f"Generate a multiple choice quiz with 4 questions and a list of the correct answers based on the following text: {text}"

@@ -12,3 +12,5 @@ class VideoSegment(BaseModel):
     video_id: str
     download: bool = False
     chunk_id: int
+
+

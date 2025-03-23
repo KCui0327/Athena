@@ -6,10 +6,10 @@ import requests
 import googleapiclient.discovery
 from youtube_transcript_api import YouTubeTranscriptApi
 from dotenv import load_dotenv
-from datatype import VideoSegment
-from gemini_client import Gemini, GeminiModel, GeminiEmbeddingModel
-from cohere_client import Cohere
-from groq_client import sentence_slicer, SentenceSlicer
+from src.backend.services.datatype import VideoSegment
+from src.backend.services.gemini_client import Gemini, GeminiModel, GeminiEmbeddingModel
+from src.backend.services.cohere_client import Cohere
+from src.backend.services.groq_client import sentence_slicer, SentenceSlicer
 import numpy as np
 load_dotenv()   
 
@@ -73,10 +73,8 @@ class Youtube:
         # The transcript is a list of dictionaries, not an object with snippets attribute
         snippets = transcript
         target_embedding = co_client.embed([target_str]).embeddings.float[0]
-
         if not snippets:
             return []
-            
         video_segment = {
             "text": "",
             "start_time": snippets[0].start,
@@ -86,7 +84,6 @@ class Youtube:
             "embedding": [],
             "subtitles": []  # Add a field to store segment subtitles
         }
-        
         video_segments = []
         chunk_id = 0
         for i, snippet in enumerate(snippets):
@@ -98,7 +95,6 @@ class Youtube:
                 video_segment["text"] += " " + current_chunk
                 
             video_segment["end_time"] = snippet.start + snippet.duration
-            
             current_duration = video_segment["end_time"] - video_segment["start_time"]
             if i > 0 and i < len(snippets) - 1:
                 past_chunk = snippets[i-1].text
@@ -112,14 +108,12 @@ class Youtube:
                     print(f"Similarity: {similarity}")
                     if similarity > SIMLIARITY_THRESHOLD:
                         video_segment["download"] = True
-                        # Collect subtitles for this segment
                         video_segment["subtitles"] = self.extract_segment_subtitles(snippets, video_segment["start_time"], video_segment["end_time"])
                         random_int = random.randint(0, len(os.listdir("downloads")) - 1)
                         brainrot_video_path = os.path.join("downloads", os.listdir("downloads")[random_int])
                         self.download_youtube_chunk(video_id, video_segment["start_time"], video_segment["end_time"], "chunks", video_segment["subtitles"], overlay_video_path=brainrot_video_path)
                         video_segment["chunk_id"] = chunk_id
                         video_segments.append(VideoSegment(**video_segment))
-
                     video_segment = {
                         "text": snippet.text,
                         "start_time": snippet.start,
@@ -129,8 +123,7 @@ class Youtube:
                         "embedding": [],
                         "subtitles": []  # Initialize as empty, will be calculated when needed
                     }
-        
-        # Add the last segment if it has content and isn't already added
+
         if video_segment["text"] and (not video_segments or video_segments[-1].text != video_segment["text"]):
             embedding = co_client.embed([video_segment["text"]]).embeddings.float[0]
             video_segment["embedding"] = embedding
@@ -140,7 +133,6 @@ class Youtube:
                 video_segment["subtitles"] = self.extract_segment_subtitles(snippets, video_segment["start_time"], video_segment["end_time"])
                 self.download_youtube_chunk(video_id, video_segment["start_time"], video_segment["end_time"], "chunks", video_segment["subtitles"])
                 video_segments.append(VideoSegment(**video_segment))
-            
         return video_segments
 
     def extract_segment_subtitles(self, transcript:list[dict], start_time:float, end_time:float) -> list[dict]:

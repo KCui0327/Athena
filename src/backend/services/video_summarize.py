@@ -7,10 +7,17 @@ from youtube_transcript_api import YouTubeTranscriptApi
 from google.cloud import aiplatform
 import os
 from youtube import Youtube
+from google.oauth2 import service_account
 
-# TODO (developer): update project id
-PROJECT_ID = 'genai-454502'
-vertexai.init(project=PROJECT_ID, location="us-central1")
+
+
+credentials = service_account.Credentials.from_service_account_file(
+    '/Users/ambroseling/Projects/Athena/service_account.json'
+)
+
+# Initialize Vertex AI with credentials
+PROJECT_ID = 'genai-genesis-454423'
+vertexai.init(project=PROJECT_ID, location="us-central1", credentials=credentials)
 
 text_model = GenerativeModel("gemini-1.5-flash-002")
 image_model = ImageGenerationModel.from_pretrained("imagen-3.0-generate-002")
@@ -23,13 +30,7 @@ def summarize_video(link, type):
         #Youtube video of 3blue1brown
         Part.from_uri(link, type),
     ]
-
     response = text_model.generate_content(contents)
-    #match = re.search(r"\*\*(.*?)\*\*", response.text)
-    #caption = ''
-    #if match:
-    #    caption = match.group(1)
-    #    print(caption)"""
     return response.text
 
 # TODO(developer): Image generation
@@ -79,7 +80,7 @@ def get_most_important_section(transcript):
     return response.text
 
 if __name__ == "__main__":
-    link = "https://www.youtube.com/watch?v=_eh1conN6YM&ab_channel=BrianDouglas"  
+    link = "https://www.youtube.com/watch?v=NdBG4gOeLvc"  
     #desc = summarize_video(link, type = "video/mp4")
     #image_generation(desc)
     id = extract.video_id(link)
@@ -94,7 +95,7 @@ if __name__ == "__main__":
 
     # Extract sentences using regex
     response.strip().lower()
-    print(response)
+    # print(response)
 
     time_stamps = [0, 0]
     for snippet in fetched_transcript:

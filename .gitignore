@@ -2,5 +2,7 @@
 src/backend/services/venv/
 src/backend/services/chunks/
 src/backend/services/downloads/
+src/frontend/node_modules/
 .env
 __pycache__/
+service_account.json
