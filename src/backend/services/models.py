@@ -73,11 +73,12 @@ class Video_Transcript(Base):
 class Questions(Base):
     __tablename__ = 'questions'
     id = Column(Integer, primary_key=True)
+    user_id = Column(ForeignKey('users.id'), nullable=False)
     question = Column(String, nullable=False)
     correct_answer = Column(String, nullable=False)
     choices = Column(ARRAY(String), nullable=False)
     created_at = Column(DateTime, default=datetime.now)
-
+    doc_id = Column(ForeignKey('material_metadata.id'), nullable=False)
 
 class Course(Base):
     __tablename__ = 'courses'

@@ -214,31 +214,28 @@ async def generate_video(user_id:Annotated[str, Form(...)], context:Annotated[st
 @app.post("/generate-quiz")
 async def generate_quiz(
     user_id: Annotated[str, Form()], 
-    course_id: Annotated[str, Form()], 
-    material_id: Annotated[str, Form()],
+    doc_id: Annotated[str, Form()],
     db: Session = Depends(get_db)
 ):
-    material = get_db().query(Material).join(
-        Material_Metadata,
-        Material.id == Material_Metadata.material_id
-    ).filter(
-        Material_Metadata.user_id == user_id,
-        Material_Metadata.course_id == course_id,
-        Material_Metadata.material_id == material_id,
-    ).all()
-
+    material = db.query(Material).filter(Material.id == doc_id).first()
     if not material:
         raise HTTPException(status_code=404, detail="No materials found for this user and course")
-    
-    quiz_content = gemini.generate_quiz(material.content)
-
-    questions = Material(
-        question = quiz_content['question'],
-        correct_answer = quiz_content['answer'],
-        choices = quiz_content['choices']
-    )
-    db.add(questions)
+    quiz_content = gemini.generate_quiz(material.text)
+    for quiz in quiz_content.parsed:
+        questions = Questions(
+            user_id = user_id,
+            doc_id = doc_id,
+            question = quiz.question,
+            correct_answer = quiz.answer,
+            choices = quiz.choices
+        )
+        db.add(questions)
     db.commit()
+    
+    return {
+        "message": "Quiz generated successfully",
+        "question_count": len(quiz_content.parsed)
+    }
 
 
 @app.post("/generate-image")
@@ -289,7 +286,6 @@ async def get_note(doc_id: str):
     if not material:
         raise HTTPException(status_code=404, detail="Material not found")
     return {"material": material}
-
 
 @app.post("/upload-material/")
 async def upload_material(
