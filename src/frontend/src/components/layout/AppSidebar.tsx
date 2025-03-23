@@ -1,6 +1,7 @@
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { auth } from "../../firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   Sidebar,
   SidebarContent,
@@ -29,14 +30,36 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import athenaLogo from "@/components/images/athena-owl-logo.png";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../../firebase";
 import { signOut } from "firebase/auth";
 
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-
+  const [user, setUser] = useState(null);
   
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []);
+  
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (!user || !user.displayName) return "?";
+    
+    // Split the display name and get initials
+    const names = user.displayName.split(" ");
+    if (names.length >= 2) {
+      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    
+    // If only one name, use first two letters or just first letter
+    return names[0].substring(0, 2).toUpperCase();
+  };
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -159,12 +182,15 @@ export function AppSidebar() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9">
-              <AvatarImage src="/images/avatar.jpg" alt="User" />
-              <AvatarFallback>JD</AvatarFallback>
+              <AvatarImage 
+                src={user?.photoURL || ""} 
+                alt={user?.displayName || "User"} 
+              />
+              <AvatarFallback>{getUserInitials()}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <p className="text-sm font-medium">Jane Doe</p>
-              <p className="text-xs text-muted-foreground">Student</p>
+              <p className="text-sm font-medium">{user?.displayName || "Guest User"}</p>
+              <p className="text-xs text-muted-foreground">{user?.email || "Not signed in"}</p>
             </div>
           </div>
           <Button 
