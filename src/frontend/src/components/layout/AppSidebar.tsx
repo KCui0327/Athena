@@ -28,9 +28,23 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import athenaLogo from "@/components/images/athena-owl-logo.png";
+import { useNavigate } from "react-router-dom";
+import { auth } from "../../firebase";
+import { signOut } from "firebase/auth";
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate('/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
 
   // Main navigation menu items
   const mainNavItems = [
@@ -153,10 +167,13 @@ export function AppSidebar() {
               <p className="text-xs text-muted-foreground">Student</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/logout" aria-label="Logout">
-              <LogOutIcon size={18} />
-            </Link>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleLogout}
+            aria-label="Logout"
+          >
+          <LogOutIcon size={18} />
           </Button>
         </div>
       </SidebarFooter>
