@@ -39,7 +39,6 @@ class Gemini:
         output_file = "input-image.png"
         prompt = f"Generate a simple image based on the description. Ensure that there are absolutely no words, letters, or text in the image. The image should be purely visual with no readable content. This is the description: {desc}."
         # The text prompt describing what you want to see.
-        print(prompt)
         images = self.image_model.generate_images(
             prompt=prompt,
             # Optional parameters
@@ -76,21 +75,17 @@ class Gemini:
         except Exception as e:
             return f"Error during generation: {str(e)}"
         
-    def generate_summary_from_video(self, video_url:str):
-        try:
-            # Create a proper request with the video URL
-            contents = [
-                {
-                    "role": "user",
-                    "parts": [
-                        {"text": "Summarize this video."},
-                        {"uri": video_url, "mime_type": "video/mp4"}
-                    ]
-                }
-            ]
-            return self.client.models.generate_content(model=self.model.value, contents=contents)
-        except Exception as e:
-            return f"Error during generation: {str(e)}"
+    def summarize_video(self, link:str, type:str):
+        contents = [
+            # Text prompt
+            "Describe this video in a few sentences.",
+            #"Provide one caption for this video in a way that is intriguiging and clickbaity."
+            #Youtube video of 3blue1brown
+            Part.from_uri(link, type),
+        ]
+
+        response = self.flash_model.generate_content(contents)
+        return response.text
 
     def generate_embedding(self, text:str):
         try:

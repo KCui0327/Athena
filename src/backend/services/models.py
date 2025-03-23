@@ -41,9 +41,12 @@ class Material(Base):
 class Material_Metadata(Base):
     __tablename__ = 'material_metadata'
     id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
     video_url = Column(String, nullable=True)
     video_summary = Column(String, nullable=True)
+    file_url = Column(String, nullable=True)
+    user_id = Column(ForeignKey('users.id'), nullable=False)
 
 class Video_Metadata(Base):
     __tablename__ = 'video_metadata'
@@ -80,7 +83,7 @@ class Course(Base):
 
 class Users(Base):
     __tablename__ = 'users'
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String, primary_key=True)
     created_at = Column(DateTime, default=datetime.now)
 # Run table creation
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ import random
 import os
 from dotenv import load_dotenv
 import uvicorn
+import requests
 load_dotenv()
 
 from fastapi import FastAPI, Request, Form, File, UploadFile, Depends, Response
@@ -12,7 +13,7 @@ from src.backend.services.cohere_client import Cohere
 from src.backend.services.models import Base, Material, Material_Metadata, Course, Video_Metadata, Video_Transcript, Questions, Users
 from src.backend.services.youtube import Youtube
 from fastapi.exceptions import HTTPException
-from typing import Annotated    
+from typing import Annotated, Optional
 import tempfile
 import shutil
 # SQLAlchemy imports
@@ -71,6 +72,29 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def get_signed_url(filename: str) -> str:
+    # First request to get the signed URL
+    url = "https://athena-gateway-1qsda12j.uc.gateway.dev/v1/cloudstore/storage-post"
+    
+    # Prepare the JSON payload
+    payload = {
+        "filename": filename
+    }
+    
+    # Make the POST request
+    response = requests.post(
+        url,
+        headers={"Content-Type": "application/json"},
+        json=payload
+    )
+    
+    # Check if request was successful
+    if response.status_code == 200:
+        return response.json()["upload_url"]
+    else:
+        raise Exception(f"Failed to get signed URL: {response.text}")
+
 
 @app.get("/")
 def root():
@@ -218,18 +242,29 @@ async def get_note(doc_id: str):
     return {"material": material}
 
 
-@app.post("/upload-note/")
-async def upload_note(user_id:Annotated[str, Form(...)], course_id:Annotated[str, Form(...)], file: UploadFile = File(...)):
-    
+@app.post("/upload-material/")
+async def upload_material(
+    name: Annotated[str, Form()],
+    user_id: Annotated[str, Form()],
+    file: UploadFile = File(...),
+    video_url: Annotated[str | None, Form()] = None  # This makes it optional
+):
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
         shutil.copyfileobj(file.file, temp_file)
         temp_file_path = temp_file.name
     try:
-        # First create the metadata
         material_metadata = Material_Metadata(
-            video_url=None,  # or whatever appropriate
-            video_summary=None  # or whatever appropriate
+            video_url=video_url,  # Can be None now
+            video_summary=None,
+            name=name,
+            user_id=user_id
         )
+        
+        # Only generate video summary if video_url is provided
+        if video_url:
+            material_metadata.video_summary = gemini.summarize_video(video_url, "video/mp4")
+        
         db = next(get_db())
         db.add(material_metadata)
         db.commit()
@@ -252,6 +287,7 @@ async def upload_note(user_id:Annotated[str, Form(...)], course_id:Annotated[str
         # Generate embeddings for the full text
         summary = gemini.generate_summary(text)
         material_metadata.summary = str(summary.text)
+        material_metadata.video_url = video_url
         db.commit()
         return {"message": f"Successfully processed and stored {len(pages)} chunks from {file.filename}"}
     finally:
@@ -263,7 +299,7 @@ async def create_user(
     db: Session = Depends(get_db)
 ):
     new_user = Users(
-        id=uuid.UUID(user_id)
+        id=user_id
     )
     db.add(new_user)
     db.commit()
