@@ -98,3 +98,4 @@ export const onUserAuthStateChanged = (callback: (user: User | null) => void): (
   return onAuthStateChanged(auth, callback);
 };
 
+export { auth, db };

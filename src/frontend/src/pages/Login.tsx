@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GithubIcon, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import PageWrapper from "@/components/layout/PageWrapper";
 import { motion } from "framer-motion";
 import athenaLogo from "@/components/images/athena-owl-logo.png";
-import { signInWithEmail, signInWithGoogle, signInWithGithub } from "@/firebase";
+import { signInWithEmail, signInWithGoogle } from "@/firebase";
 import { toast } from "@/components/ui/use-toast";
 
 const Login = () => {
@@ -68,26 +68,6 @@ const Login = () => {
     }
   };
 
-  const handleGithubSignIn = async () => {
-    setIsLoading(true);
-    try {
-      await signInWithGithub();
-      toast({
-        title: "Success",
-        description: "You have successfully signed in with GitHub",
-      });
-      navigate("/dashboard");
-    } catch (error: any) {
-      toast({
-        title: "Error signing in",
-        description: error.message || "Failed to sign in with GitHub",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <PageWrapper className="min-h-screen flex flex-col items-center justify-center bg-secondary p-4">
       <div className="w-full max-w-md">
@@ -97,24 +77,17 @@ const Login = () => {
           transition={{ duration: 0.5 }}
           className="text-center mb-8"
         >
-          <Link 
-            to="/" 
-            className="inline-flex items-center space-x-2"
-          >
+          <Link to="/" className="inline-flex items-center space-x-2">
             <div className="relative">
               <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 opacity-75 blur"></div>
               <div className="relative flex items-center justify-center h-12 w-12 rounded-full bg-white">
-                <img 
-                  src={athenaLogo}
-                  alt="Athena Logo" 
-                  className="h-10 w-10" 
-                />
+                <img src={athenaLogo} alt="Athena Logo" className="h-10 w-10" />
               </div>
             </div>
             <span className="text-2xl font-semibold tracking-tight">Athena</span>
           </Link>
         </motion.div>
-        
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -128,27 +101,16 @@ const Login = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={handleGoogleSignIn}
-                  disabled={isLoading}
-                >
-                  <Mail className="mr-2 h-4 w-4" />
-                  Google
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={handleGithubSignIn}
-                  disabled={isLoading}
-                >
-                  <GithubIcon className="mr-2 h-4 w-4" />
-                  GitHub
-                </Button>
-              </div>
-              
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Google
+              </Button>
+
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <Separator className="w-full" />
@@ -159,14 +121,14 @@ const Login = () => {
                   </span>
                 </div>
               </div>
-              
+
               <form onSubmit={handleEmailSignIn}>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    placeholder="hello@example.com" 
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="hello@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isLoading}
@@ -179,20 +141,16 @@ const Login = () => {
                       Forgot password?
                     </Link>
                   </div>
-                  <Input 
-                    id="password" 
+                  <Input
+                    id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading}
                   />
                 </div>
-                
-                <Button 
-                  type="submit" 
-                  className="w-full mt-4"
-                  disabled={isLoading}
-                >
+
+                <Button type="submit" className="w-full mt-4" disabled={isLoading}>
                   {isLoading ? "Signing in..." : "Sign in"}
                 </Button>
               </form>

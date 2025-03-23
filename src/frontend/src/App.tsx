@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +15,7 @@ import VideoSnippets from "./pages/VideoSnippets";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { LazyMotion, domAnimation } from "framer-motion";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -30,13 +30,62 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/notes" element={<Notes />} />
-            <Route path="/notes/upload" element={<NotesUpload />} />
-            <Route path="/study-guides" element={<StudyGuides />} />
-            <Route path="/quizzes" element={<Quizzes />} />
-            <Route path="/videos" element={<VideoSnippets />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notes"
+              element={
+                <ProtectedRoute>
+                  <Notes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notes/upload"
+              element={
+                <ProtectedRoute>
+                  <NotesUpload />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/study-guides"
+              element={
+                <ProtectedRoute>
+                  <StudyGuides />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quizzes"
+              element={
+                <ProtectedRoute>
+                  <Quizzes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/videos"
+              element={
+                <ProtectedRoute>
+                  <VideoSnippets />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
