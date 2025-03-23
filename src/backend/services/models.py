@@ -4,7 +4,29 @@ from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Foreig
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from dotenv import load_dotenv
+from sqlalchemy import (
+    create_engine, Column, Integer, String, Float, Boolean,
+    DateTime, ForeignKey, ARRAY
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 
+# Load environment variables
+load_dotenv()
+
+# Read from .env
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT", 5432)
+DB_NAME = os.getenv("DB_NAME")
+
+# Create the connection URL
+DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+engine = create_engine(DATABASE_URL)
+
+# Base model
 Base = declarative_base()
 
 class Material(Base):
@@ -19,7 +41,6 @@ class Material(Base):
 class Course(Base):
     __tablename__ = 'courses'
     id = Column(Integer, primary_key=True)
-    user_id = Column(ForeignKey('users.id'), nullable=False)
     name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
 
