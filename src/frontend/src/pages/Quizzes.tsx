@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,16 @@ import { ChevronDownIcon, FilterIcon, SearchIcon, SlidersIcon } from "lucide-rea
 import QuizCard from "@/components/ui-custom/QuizCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
+import QuizModal from "@/components/ui-custom/QuizModal";
+
+interface ActiveQuiz {
+  id: number;
+  title: string;
+}
 
 const Quizzes = () => {
+  const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz | null>(null);
+  
   // Sample data for quizzes
   const quizzes = [
     {
@@ -95,6 +103,14 @@ const Quizzes = () => {
   const inProgressQuizzes = quizzes.filter(quiz => quiz.completedQuestions > 0 && quiz.completedQuestions < quiz.totalQuestions);
   const completedQuizzes = quizzes.filter(quiz => quiz.completedQuestions === quiz.totalQuestions);
   const newQuizzes = quizzes.filter(quiz => quiz.completedQuestions === 0);
+
+  const handleStartQuiz = (quizId: number, title: string) => {
+    setActiveQuiz({ id: quizId, title });
+  };
+
+  const handleCloseQuiz = () => {
+    setActiveQuiz(null);
+  };
 
   return (
     <AppShell>
@@ -188,10 +204,9 @@ const Quizzes = () => {
                     totalQuestions={quiz.totalQuestions}
                     completedQuestions={quiz.completedQuestions}
                     difficulty={quiz.difficulty}
-                    timeEstimate={quiz.timeEstimate}
                     index={index}
-                    onStart={() => console.log(`Start quiz ${quiz.id}`)}
-                    onContinue={() => console.log(`Continue quiz ${quiz.id}`)}
+                    onStart={() => handleStartQuiz(quiz.id, quiz.title)}
+                    onContinue={() => handleStartQuiz(quiz.id, quiz.title)}
                   />
                 ))}
               </div>
@@ -205,10 +220,9 @@ const Quizzes = () => {
                     totalQuestions={quiz.totalQuestions}
                     completedQuestions={quiz.completedQuestions}
                     difficulty={quiz.difficulty}
-                    timeEstimate={quiz.timeEstimate}
                     index={index}
-                    onStart={() => console.log(`Start quiz ${quiz.id}`)}
-                    onContinue={() => console.log(`Continue quiz ${quiz.id}`)}
+                    onStart={() => handleStartQuiz(quiz.id, quiz.title)}
+                    onContinue={() => handleStartQuiz(quiz.id, quiz.title)}
                   />
                 ))}
               </div>
@@ -222,10 +236,9 @@ const Quizzes = () => {
                     totalQuestions={quiz.totalQuestions}
                     completedQuestions={quiz.completedQuestions}
                     difficulty={quiz.difficulty}
-                    timeEstimate={quiz.timeEstimate}
                     index={index}
-                    onStart={() => console.log(`Start quiz ${quiz.id}`)}
-                    onContinue={() => console.log(`Continue quiz ${quiz.id}`)}
+                    onStart={() => handleStartQuiz(quiz.id, quiz.title)}
+                    onContinue={() => handleStartQuiz(quiz.id, quiz.title)}
                   />
                 ))}
               </div>
@@ -239,16 +252,25 @@ const Quizzes = () => {
                     totalQuestions={quiz.totalQuestions}
                     completedQuestions={quiz.completedQuestions}
                     difficulty={quiz.difficulty}
-                    timeEstimate={quiz.timeEstimate}
                     index={index}
-                    onStart={() => console.log(`Start quiz ${quiz.id}`)}
-                    onContinue={() => console.log(`Continue quiz ${quiz.id}`)}
+                    onStart={() => handleStartQuiz(quiz.id, quiz.title)}
+                    onContinue={() => handleStartQuiz(quiz.id, quiz.title)}
                   />
                 ))}
               </div>
             </TabsContent>
           </Tabs>
         </motion.div>
+        
+        {/* Quiz Modal */}
+        {activeQuiz && (
+          <QuizModal
+            isOpen={activeQuiz !== null}
+            onClose={handleCloseQuiz}
+            quizId={activeQuiz.id}
+            quizTitle={activeQuiz.title}
+          />
+        )}
       </div>
     </AppShell>
   );

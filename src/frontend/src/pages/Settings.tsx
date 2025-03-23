@@ -37,7 +37,6 @@ const Settings = () => {
           <Tabs defaultValue="profile" className="w-full">
             <TabsList className="grid w-full max-w-md grid-cols-3 mb-8">
               <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="notifications">Notifications</TabsTrigger>
               <TabsTrigger value="account">Account</TabsTrigger>
             </TabsList>
             
@@ -131,88 +130,6 @@ const Settings = () => {
                   </CardContent>
                 </Card>
               </div>
-            </TabsContent>
-            
-            <TabsContent value="notifications">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Notification Preferences</CardTitle>
-                  <CardDescription>
-                    Choose what notifications you receive and how
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="font-medium">Email Notifications</h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">Study Reminders</p>
-                          <p className="text-sm text-muted-foreground">
-                            Receive reminders about your study schedule
-                          </p>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">New Content</p>
-                          <p className="text-sm text-muted-foreground">
-                            Get notified when new study materials are generated
-                          </p>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">Quiz Results</p>
-                          <p className="text-sm text-muted-foreground">
-                            Receive emails with your quiz results
-                          </p>
-                        </div>
-                        <Switch />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">Promotions</p>
-                          <p className="text-sm text-muted-foreground">
-                            Receive emails about new features and offers
-                          </p>
-                        </div>
-                        <Switch />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-4">
-                    <h3 className="font-medium">Push Notifications</h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">Study Reminders</p>
-                          <p className="text-sm text-muted-foreground">
-                            Receive reminders about your study schedule
-                          </p>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">New Content</p>
-                          <p className="text-sm text-muted-foreground">
-                            Get notified when new study materials are generated
-                          </p>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Button>Save preferences</Button>
-                </CardContent>
-              </Card>
             </TabsContent>
             
             <TabsContent value="account">

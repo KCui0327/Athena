@@ -13,7 +13,6 @@ interface QuizCardProps {
   totalQuestions: number;
   completedQuestions?: number;
   difficulty: "Easy" | "Medium" | "Hard";
-  timeEstimate: string;
   className?: string;
   onStart?: () => void;
   onContinue?: () => void;
@@ -25,7 +24,6 @@ const QuizCard = ({
   totalQuestions, 
   completedQuestions = 0, 
   difficulty, 
-  timeEstimate,
   className,
   onStart,
   onContinue,
@@ -33,7 +31,6 @@ const QuizCard = ({
 }: QuizCardProps) => {
   const isStarted = completedQuestions > 0;
   const isCompleted = completedQuestions === totalQuestions;
-  const progress = (completedQuestions / totalQuestions) * 100;
   
   const difficultyColor = {
     "Easy": "bg-green-100 text-green-800",
@@ -86,11 +83,7 @@ const QuizCard = ({
               <div className="text-sm text-muted-foreground">
                 {completedQuestions} of {totalQuestions} questions
               </div>
-              <div className="text-sm text-muted-foreground">
-                ~{timeEstimate}
-              </div>
             </div>
-            <Progress value={progress} className="h-2" />
           </div>
         </CardContent>
         <CardFooter>

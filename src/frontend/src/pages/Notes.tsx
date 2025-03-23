@@ -11,10 +11,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDownIcon, FilterIcon, PlusIcon, SearchIcon, SlidersIcon } from "lucide-react";
 import NoteCard from "@/components/ui-custom/NoteCard";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 const Notes = () => {
+  const navigate = useNavigate();
+
   // Sample data for notes
   const notes = [
     {
@@ -81,6 +83,10 @@ const Notes = () => {
       tags: ["Business", "Logistics"]
     },
   ];
+
+  const handleViewNote = (noteId: number) => {
+    navigate(`/notes/${noteId}`);
+  };
 
   return (
     <AppShell>
@@ -175,7 +181,7 @@ const Notes = () => {
               date={note.date}
               tags={note.tags}
               index={index}
-              onView={() => console.log(`View note ${note.id}`)}
+              onView={() => handleViewNote(note.id)}
               onEdit={() => console.log(`Edit note ${note.id}`)}
               onDelete={() => console.log(`Delete note ${note.id}`)}
             />

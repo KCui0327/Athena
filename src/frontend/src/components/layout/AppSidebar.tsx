@@ -45,11 +45,6 @@ export function AppSidebar() {
       icon: FileTextIcon,
     },
     {
-      title: "Study Guides",
-      path: "/study-guides",
-      icon: FileTextIcon,
-    },
-    {
       title: "Quizzes",
       path: "/quizzes",
       icon: BrainIcon,
@@ -72,11 +67,6 @@ export function AppSidebar() {
       title: "Account Settings",
       path: "/settings",
       icon: Settings2Icon,
-    },
-    {
-      title: "Help & Support",
-      path: "/help",
-      icon: HelpCircleIcon,
     },
   ];
 

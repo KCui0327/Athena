@@ -8,8 +8,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Notes from "./pages/Notes";
+import NoteDetail from "./pages/NoteDetail";
 import NotesUpload from "./pages/NotesUpload";
-import StudyGuides from "./pages/StudyGuides";
 import Quizzes from "./pages/Quizzes";
 import VideoSnippets from "./pages/VideoSnippets";
 import Settings from "./pages/Settings";
@@ -55,14 +55,6 @@ const App = () => (
               }
             />
             <Route
-              path="/study-guides"
-              element={
-                <ProtectedRoute>
-                  <StudyGuides />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/quizzes"
               element={
                 <ProtectedRoute>
@@ -83,6 +75,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notes/:id" 
+              element={
+                <ProtectedRoute>
+                   <NoteDetail />
                 </ProtectedRoute>
               }
             />
