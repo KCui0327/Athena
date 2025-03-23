@@ -15,6 +15,8 @@ const NotesUpload = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [errors, setErrors] = useState<{ title?: string; course?: string; file?: string }>({});
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   const courses = [
     { id: 1, name: "Introduction to Physics" },
@@ -41,7 +43,7 @@ const NotesUpload = () => {
     setUploadedFile(null);
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     const newErrors: typeof errors = {};
     if (!title.trim()) newErrors.title = "Title is required";
     if (!selectedCourse) newErrors.course = "Course must be selected";
@@ -50,7 +52,17 @@ const NotesUpload = () => {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    const payload: any = {
+    // Create FormData object to handle file upload
+    const formData = new FormData();
+    formData.append('file', uploadedFile);
+    formData.append('title', title);
+    formData.append('courseId', selectedCourse || '');
+    if (videoUrl.trim()) {
+      formData.append('videoUrl', videoUrl);
+    }
+
+    // Create JSON payload for additional data
+    const payloadJson = JSON.stringify({
       material: {
         text: null,
         course_id: Number(selectedCourse),
@@ -61,19 +73,51 @@ const NotesUpload = () => {
         user_id: 1, // TODO: replace with actual user ID
         created_at: new Date().toISOString(),
       },
-    };
-
-    if (videoUrl.trim()) {
-      payload.video = {
+      video: videoUrl.trim() ? {
         video_id: videoUrl,
         user_id: 1, // TODO: replace with actual user ID
         length: 0, // TODO: replace with video length if known
         created_at: new Date().toISOString(),
-      };
-    }
+      } : undefined
+    });
+    formData.append('payload', payloadJson);
 
-    console.log("Prepared Payload:", payload);
-    // TODO: Submit payload to backend
+    try {
+      // Show loading state
+      setIsUploading(true);
+      
+      // Make API call to upload endpoint
+      const response = await fetch('/api/notes/upload', {
+        method: 'POST',
+        body: formData,
+        // Don't set Content-Type header, browser will set it with boundary for FormData
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log("Upload successful:", result);
+      
+      // Reset form after successful upload
+      setTitle("");
+      setSelectedCourse(null);
+      setUploadedFile(null);
+      setImagePreview(null);
+      setVideoUrl("");
+      
+      // Show success message
+      setUploadStatus({ success: true, message: "Notes uploaded successfully!" });
+    } catch (error) {
+      console.error("Upload error:", error);
+      setUploadStatus({ 
+        success: false, 
+        message: error instanceof Error ? error.message : "An unknown error occurred" 
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -221,10 +265,28 @@ const NotesUpload = () => {
           transition={{ duration: 0.3, delay: 0.3 }}
           className="flex justify-end mt-6"
         >
-          <Button onClick={handleUpload}>
-            <UploadIcon className="mr-2 h-4 w-4" />
-            Upload and Process
+          <Button 
+            onClick={handleUpload} 
+            disabled={isUploading}
+          >
+            {isUploading ? (
+              <>
+                <span className="spinner mr-2"></span>
+                Uploading...
+              </>
+            ) : (
+              <>
+                <UploadIcon className="mr-2 h-4 w-4" />
+                Upload and Process
+              </>
+            )}
           </Button>
+
+          {uploadStatus && (
+            <div className={`ml-4 ${uploadStatus.success ? 'text-green-500' : 'text-red-500'}`}>
+              {uploadStatus.message}
+            </div>
+          )}
         </motion.div>
       </div>
     </AppShell>
