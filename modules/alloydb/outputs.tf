@@ -13,14 +13,14 @@ output "private_ip_address" {
   value       = google_compute_global_address.private_ip_alloc.address
 }
 
-output "cluster_state" {
-  description = "The current state of the AlloyDB cluster"
-  value       = google_alloydb_cluster.athena_alloydb_cluster.state
+output "cluster_id" {
+  description = "The ID of the AlloyDB cluster"
+  value       = google_alloydb_cluster.athena_alloydb_cluster.id
 }
 
-output "instance_state" {
-  description = "The current state of the AlloyDB instance"
-  value       = google_alloydb_instance.athena_alloydb_instance.state
+output "instance_id" {
+  description = "The ID of the AlloyDB instance"
+  value       = google_alloydb_instance.athena_alloydb_instance.id
 }
 
 output "connection_string" {

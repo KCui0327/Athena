@@ -1,9 +1,3 @@
-variable "gcp_credentials" {
-  type        = string
-  sensitive   = true
-  description = "Google Cloud service account credentials"
-}
-
 variable "project_id" {
   default = "genai-genesis-454423"
 }
@@ -38,4 +32,10 @@ variable "api_gateway_name" {
   description = "Name for the API Gateway"
   type        = string
   default     = "athena-api"
+}
+
+variable "openapi_path" {
+  description = "Path to the OpenAPI file"
+  type        = string
+  default     = "openapi.yaml"
 }

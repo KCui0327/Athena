@@ -39,3 +39,9 @@ output "vertex_ai_service_account" {
   value       = module.vertex_ai.vertex_service_account.email
   depends_on  = [module.vertex_ai]
 }
+
+output "cloud_run_service_urls" {
+  description = "URLs of the Cloud Run services"
+  value       = module.cloud_run.service_urls
+  depends_on  = [module.cloud_run]
+}

@@ -1,9 +1,9 @@
 swagger: '2.0'
 info:
-  title: Athena GenAI API
+  title: athena-api
   description: API for Athena GenAI application with Vertex AI, AlloyDB, and Firebase integration
   version: 1.0.0
-host: athena-gateway-{hostname}.apigateway.genai-genesis-454423.cloud.goog
+host: ${API_GATEWAY_HOST}
 schemes:
   - https
 produces:
@@ -11,286 +11,298 @@ produces:
 consumes:
   - application/json
 paths:
-  # Database Queries Service
-  /db/query:
+  # AlloyDB direct endpoints
+  /v1/alloydb/material-get:
     get:
-      summary: Execute a read-only query on AlloyDB
-      operationId: readQuery
+      operationId: alloydbMaterialGet
+      summary: Get materials
+      description: Retrieve materials from AlloyDB
+      responses:
+        200:
+          description: Successful response
       x-google-backend:
-        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/db-query
+        address: ${ALLOYDB_SERVICE_URL}/material-get
+        deadline: 60.0
+  
+  /v1/alloydb/material-metadata-get:
+    get:
+      operationId: alloydbMaterialMetadataGet
+      summary: Get material metadata
+      description: Retrieve material metadata from AlloyDB
+      responses:
+        200:
+          description: Successful response
+      x-google-backend:
+        address: ${ALLOYDB_SERVICE_URL}/material-metadata-get
+        deadline: 60.0
+  
+  /v1/alloydb/video-metadata-get:
+    get:
+      operationId: alloydbVideoMetadataGet
+      summary: Get video metadata
+      description: Retrieve video metadata from AlloyDB
+      responses:
+        200:
+          description: Successful response
+      x-google-backend:
+        address: ${ALLOYDB_SERVICE_URL}/video-metadata-get
+        deadline: 60.0
+  
+  /v1/alloydb/video-transcript-get:
+    get:
+      operationId: alloydbVideoTranscriptGet
+      summary: Get video transcripts
+      description: Retrieve video transcripts from AlloyDB
+      responses:
+        200:
+          description: Successful response
+      x-google-backend:
+        address: ${ALLOYDB_SERVICE_URL}/video-transcript-get
+        deadline: 60.0
+  
+  /v1/alloydb/material-post:
+    post:
+      operationId: alloydbMaterialPost
+      summary: Create material
+      description: Create a new material in AlloyDB
       parameters:
-        - name: sql
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+      responses:
+        200:
+          description: Successful response
+      x-google-backend:
+        address: ${ALLOYDB_SERVICE_URL}/material-post
+        deadline: 60.0
+  
+  /v1/alloydb/material-metadata-post:
+    post:
+      operationId: alloydbMaterialMetadataPost
+      summary: Create material metadata
+      description: Create new material metadata in AlloyDB
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+      responses:
+        200:
+          description: Successful response
+      x-google-backend:
+        address: ${ALLOYDB_SERVICE_URL}/material-metadata-post
+        deadline: 60.0
+  
+  /v1/alloydb/video-metadata-post:
+    post:
+      operationId: alloydbVideoMetadataPost
+      summary: Create video metadata
+      description: Create new video metadata in AlloyDB
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+      responses:
+        200:
+          description: Successful response
+      x-google-backend:
+        address: ${ALLOYDB_SERVICE_URL}/video-metadata-post
+        deadline: 60.0
+  
+  /v1/alloydb/video-transcript-post:
+    post:
+      operationId: alloydbVideoTranscriptPost
+      summary: Create video transcript
+      description: Create a new video transcript in AlloyDB
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+      responses:
+        200:
+          description: Successful response
+      x-google-backend:
+        address: ${ALLOYDB_SERVICE_URL}/video-transcript-post
+        deadline: 60.0
+  
+  /v1/alloydb/material-delete:
+    delete:
+      operationId: alloydbMaterialDelete
+      summary: Delete material
+      description: Delete a material from AlloyDB
+      parameters:
+        - name: material_id
           in: query
+          type: integer
           required: true
-          type: string
-          description: SQL SELECT query to execute
+          description: ID of the material to delete
       responses:
-        '200':
-          description: Query results
-          schema:
-            type: object
-            properties:
-              results:
-                type: array
-                items:
-                  type: object
-        '400':
-          description: Bad request or invalid query
-        '500':
-          description: Server error
-
-  /db/execute:
-    post:
-      summary: Execute a write operation on AlloyDB
-      operationId: writeQuery
+        200:
+          description: Successful response
+        404:
+          description: Resource not found
       x-google-backend:
-        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/db-query
+        address: ${ALLOYDB_SERVICE_URL}/material-delete
+        deadline: 60.0
+  
+  # Cloudstore direct endpoints
+  /v1/cloudstore/storage-get:
+    get:
+      operationId: cloudstoreStorageGet
+      summary: List files
+      description: List all files in storage
+      responses:
+        200:
+          description: Successful response
+      x-google-backend:
+        address: ${CLOUDSTORE_SERVICE_URL}/storage-get
+        deadline: 60.0
+  
+  /v1/cloudstore/storage-post:
+    post:
+      operationId: cloudstoreStoragePost
+      summary: Generate signed URL
+      description: Generate a signed URL for file upload
       parameters:
         - name: body
           in: body
           required: true
           schema:
             type: object
-            required:
-              - sql
-            properties:
-              sql:
-                type: string
-              params:
-                type: object
-      responses:
-        '200':
-          description: Execution results
-          schema:
-            type: object
-            properties:
-              rowsAffected:
-                type: integer
-        '400':
-          description: Bad request or invalid query
-        '500':
-          description: Server error
-
-  /db/tables:
-    get:
-      summary: List all tables in the database
-      operationId: listTables
-      x-google-backend:
-        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/db-query
-      responses:
-        '200':
-          description: List of tables
-          schema:
-            type: object
-            properties:
-              tables:
-                type: array
-                items:
-                  type: string
-        '500':
-          description: Server error
-
-  /db/table/{tableName}:
-    get:
-      summary: Get schema for a specific table
-      operationId: getTableSchema
-      x-google-backend:
-        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/db-query
-      parameters:
-        - name: tableName
-          in: path
-          required: true
-          type: string
-      responses:
-        '200':
-          description: Table schema
-          schema:
-            type: object
-            properties:
-              table:
-                type: string
-              columns:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    type:
-                      type: string
-        '500':
-          description: Server error
-
-  # Storage API Service
-  /storage/files:
-    get:
-      summary: List files in the storage bucket
-      operationId: listFiles
-      x-google-backend:
-        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/storage-api
-      responses:
-        '200':
-          description: List of files
-          schema:
-            type: object
-            properties:
-              files:
-                type: array
-                items:
-                  type: string
-        '500':
-          description: Server error
-
-  /storage/upload:
-    post:
-      summary: Get signed URL for file upload
-      operationId: getUploadUrl
-      x-google-backend:
-        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/storage-api
-      parameters:
-        - name: body
-          in: body
-          required: true
-          schema:
-            type: object
-            required:
-              - filename
             properties:
               filename:
                 type: string
+                description: Name of the file to generate signed URL for
       responses:
-        '200':
-          description: Signed URL for upload
-          schema:
-            type: object
-            properties:
-              upload_url:
-                type: string
-        '400':
-          description: Bad request
-        '500':
-          description: Server error
-
-  # Model Inference Service
-  /ai/text:
-    post:
-      summary: Generate text using Vertex AI
-      operationId: generateText
+        200:
+          description: Successful response
       x-google-backend:
-        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/model-inference
+        address: ${CLOUDSTORE_SERVICE_URL}/storage-post
+        deadline: 60.0
+  
+  /v1/cloudstore/storage-delete:
+    delete:
+      operationId: cloudstoreStorageDelete
+      summary: Delete file
+      description: Delete a file from storage
       parameters:
         - name: body
           in: body
           required: true
           schema:
             type: object
-            required:
-              - prompt
             properties:
-              prompt:
+              filename:
                 type: string
-              parameters:
-                type: object
-                properties:
-                  temperature:
-                    type: number
-                  max_output_tokens:
-                    type: integer
-                  top_p:
-                    type: number
-                  top_k:
-                    type: integer
+                description: Name of the file to delete
       responses:
-        '200':
-          description: Generated text
+        200:
+          description: Successful response
+        404:
+          description: Resource not found
+      x-google-backend:
+        address: ${CLOUDSTORE_SERVICE_URL}/storage-delete
+        deadline: 60.0
+  
+  # VertexAI direct endpoints
+  /v1/vertexai/summarize_video:
+    post:
+      operationId: vertexaiSummarizeVideo
+      summary: Summarize video
+      description: Generate a summary of a video
+      parameters:
+        - name: video_link
+          in: query
+          required: true
+          type: string
+          description: Link to video for summarization
+      responses:
+        200:
+          description: Successful response
+          schema:
+            type: object
+            properties:
+              summary:
+                type: string
+                description: Generated summary
+              error:
+                type: string
+                description: Error message if processing failed
+      x-google-backend:
+        address: ${VERTEXAI_SERVICE_URL}/summarize_video
+        deadline: 300.0  # 5 minute timeout for video processing
+  
+  /v1/vertexai/generate_quiz:
+    post:
+      operationId: vertexaiGenerateQuiz
+      summary: Generate quiz
+      description: Generate a quiz based on provided text
+      parameters:
+        - name: body
+          in: body
+          required: true
           schema:
             type: object
             properties:
               text:
                 type: string
-              safetyAttributes:
-                type: object
-        '400':
-          description: Bad request
-        '500':
-          description: Server error
-
-  /ai/image:
-    post:
-      summary: Generate image using Vertex AI
-      operationId: generateImage
+                description: Text content for quiz generation
+      responses:
+        200:
+          description: Successful response
+          schema:
+            type: object
+            properties:
+              quiz:
+                type: string
+                description: Generated quiz
+              error:
+                type: string
+                description: Error message if processing failed
       x-google-backend:
-        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/model-inference
+        address: ${VERTEXAI_SERVICE_URL}/generate_quiz
+        deadline: 120.0  # 2 minute timeout
+  
+  /v1/vertexai/generate_summary:
+    post:
+      operationId: vertexaiGenerateSummary
+      summary: Generate summary
+      description: Generate a summary of provided text
       parameters:
         - name: body
           in: body
           required: true
           schema:
             type: object
-            required:
-              - prompt
             properties:
-              prompt:
+              text:
                 type: string
-              parameters:
-                type: object
-                properties:
-                  sample_count:
-                    type: integer
-                  seed:
-                    type: integer
+                description: Text content for summarization
       responses:
-        '200':
-          description: Generated images
+        200:
+          description: Successful response
           schema:
             type: object
             properties:
-              images:
-                type: array
-                items:
-                  type: string
-              prompt:
+              summary:
                 type: string
-        '400':
-          description: Bad request
-        '500':
-          description: Server error
-
-  /ai/analyze:
-    post:
-      summary: Analyze image content
-      operationId: analyzeImage
+                description: Generated summary
+              error:
+                type: string
+                description: Error message if processing failed
       x-google-backend:
-        address: https://us-central1-genai-genesis-454423.cloudfunctions.net/model-inference
-      parameters:
-        - name: body
-          in: body
-          required: true
-          schema:
-            type: object
-            required:
-              - image
-            properties:
-              image:
-                type: string
-                description: Base64-encoded image data
-              type:
-                type: string
-                enum: [objects, labels, text]
-                default: objects
-      responses:
-        '200':
-          description: Analysis results
-          schema:
-            type: object
-        '400':
-          description: Bad request
-        '500':
-          description: Server error
-
+        address: ${VERTEXAI_SERVICE_URL}/generate_summary
+        deadline: 120.0  # 2 minute timeout
+  
 securityDefinitions:
   api_key:
     type: apiKey
     name: key
     in: query
-

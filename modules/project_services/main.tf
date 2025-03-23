@@ -11,7 +11,8 @@ resource "google_project_service" "services" {
     "containerregistry.googleapis.com",
     "cloudbuild.googleapis.com",
     "iam.googleapis.com",
-    "servicenetworking.googleapis.com"
+    "servicenetworking.googleapis.com",
+    "run.googleapis.com"
   ])
 
   service            = each.key

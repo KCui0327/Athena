@@ -1,177 +1,154 @@
-import functions_framework
-import json
+from fastapi import FastAPI, HTTPException, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from models import Base, Material, Material_Metadata, Video_Metadata, Video_Transcript, Questions
+from pydantic import BaseModel
+from typing import List, Optional
 import os
-from flask import jsonify, request
-import sqlalchemy
-from sqlalchemy import text
-from google.cloud import secretmanager
-import pg8000
+from dotenv import load_dotenv
+import uvicorn
+from fastapi import FastAPI, APIRouter
 
-# Cache connections and configuration
-db_connection = None
-connection_name = None
-db_user = None
-db_password = None
-db_name = None
-secret_client = None
+# Load .env
+load_dotenv()
 
-def get_db_config():
-    """Retrieve database configuration from Secret Manager."""
-    global secret_client, connection_name, db_user, db_password, db_name
-    
-    if secret_client is None:
-        secret_client = secretmanager.SecretManagerServiceClient()
-    
-    # Only fetch once per function instance
-    if connection_name is None:
-        # Get connection parameters from Secret Manager
-        project_id = "genai-genesis-454423"
-        
-        # Get AlloyDB connection name
-        name = f"projects/{project_id}/secrets/alloydb-connection-name/versions/latest"
-        response = secret_client.access_secret_version(request={"name": name})
-        connection_name = response.payload.data.decode("UTF-8")
-        
-        # Get database user
-        name = f"projects/{project_id}/secrets/alloydb-user/versions/latest"
-        response = secret_client.access_secret_version(request={"name": name})
-        db_user = response.payload.data.decode("UTF-8")
-        
-        # Get database password
-        name = f"projects/{project_id}/secrets/alloydb-password/versions/latest"
-        response = secret_client.access_secret_version(request={"name": name})
-        db_password = response.payload.data.decode("UTF-8")
-        
-        # Get database name
-        name = f"projects/{project_id}/secrets/alloydb-name/versions/latest"
-        response = secret_client.access_secret_version(request={"name": name})
-        db_name = response.payload.data.decode("UTF-8")
-
-def get_db_connection():
-    """Create or return a database connection."""
-    global db_connection
-    
-    # Get connection parameters
-    get_db_config()
-    
-    # Create connection if it doesn't exist
-    if db_connection is None:
-        # Use the AlloyDB connector with SQLAlchemy
-        db_connection = sqlalchemy.create_engine(
-            sqlalchemy.engine.url.URL(
-                drivername="postgresql+pg8000",
-                username=db_user,
-                password=db_password,
-                database=db_name,
-                query={
-                    "unix_sock": f"/cloudsql/{connection_name}/.s.PGSQL.5432"
-                }
-            ),
-            pool_size=5,
-            max_overflow=2,
-            pool_timeout=30,
-            pool_recycle=1800
-        )
-    
-    return db_connection
-
-@functions_framework.http
-def db_query(request):
-    """Cloud Function to handle database queries.
-    
-    Routes:
-    GET /query?sql=<SQL_QUERY> - Execute a read-only query
-    POST /execute - Execute a write operation (with JSON body containing SQL)
-    GET /tables - List all tables in the database
-    GET /table/<table_name> - Get schema for a specific table
-    """
-    
-    # Set CORS headers for the preflight request
-    if request.method == 'OPTIONS':
-        headers = {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Max-Age': '3600'
-        }
-        return ('', 204, headers)
-    
-    # Set CORS headers for the main request
-    headers = {'Access-Control-Allow-Origin': '*'}
-    
+# Dependency
+def get_db():
+    db = SessionLocal()
     try:
-        # Get database connection
-        db = get_db_connection()
-        
-        # Route: List tables
-        if request.path == '/tables':
-            query = text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
-            with db.connect() as conn:
-                result = conn.execute(query)
-                tables = [row[0] for row in result]
-            return (jsonify({"tables": tables}), 200, headers)
-        
-        # Route: Table schema
-        elif request.path.startswith('/table/'):
-            table_name = request.path.split('/')[-1]
-            query = text("""
-                SELECT column_name, data_type 
-                FROM information_schema.columns 
-                WHERE table_schema = 'public' 
-                AND table_name = :table_name
-            """)
-            with db.connect() as conn:
-                result = conn.execute(query, {"table_name": table_name})
-                columns = [{"name": row[0], "type": row[1]} for row in result]
-            return (jsonify({"table": table_name, "columns": columns}), 200, headers)
-        
-        # Route: Execute read-only query
-        elif request.method == 'GET' and 'sql' in request.args:
-            sql = request.args.get('sql')
-            
-            # Safety check: only allow SELECT statements
-            if not sql.strip().upper().startswith('SELECT'):
-                return (jsonify({"error": "Only SELECT queries are allowed with GET"}), 400, headers)
-            
-            with db.connect() as conn:
-                result = conn.execute(text(sql))
-                rows = [dict(row._mapping) for row in result]
-            return (jsonify({"results": rows}), 200, headers)
-        
-        # Route: Execute write operation
-        elif request.method == 'POST' and request.path == '/execute':
-            if not request.is_json:
-                return (jsonify({"error": "Missing JSON in request"}), 400, headers)
-                
-            data = request.get_json()
-            if 'sql' not in data:
-                return (jsonify({"error": "Missing 'sql' in request body"}), 400, headers)
-            
-            sql = data['sql']
-            params = data.get('params', {})
-            
-            # Execute the statement
-            with db.connect() as conn:
-                result = conn.execute(text(sql), params)
-                
-                # For INSERT/UPDATE/DELETE, return the row count
-                if result.rowcount >= 0:
-                    return (jsonify({"rowsAffected": result.rowcount}), 200, headers)
-                # For other statements
-                else:
-                    return (jsonify({"message": "Statement executed successfully"}), 200, headers)
-        
-        # Unknown route
-        else:
-            return (jsonify({
-                "error": "Invalid route or method",
-                "usage": {
-                    "GET /query?sql=<SQL_QUERY>": "Execute a read-only query",
-                    "POST /execute": "Execute a write operation",
-                    "GET /tables": "List all tables",
-                    "GET /table/<table_name>": "Get table schema"
-                }
-            }), 400, headers)
-            
-    except Exception as e:
-        return (jsonify({"error": str(e)}), 500, headers)
+        yield db
+    finally:
+        db.close()
+
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
+
+DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+app = FastAPI()
+
+# -------------------- SCHEMAS --------------------
+class MaterialSchema(BaseModel):
+    text: Optional[str]
+    doc_id: int
+    embedding: List[float]
+
+class MaterialMetadataSchema(BaseModel):
+    material_id: int
+
+class VideoMetadataSchema(BaseModel):
+    video_id: str
+    length: int
+
+class VideoTranscriptSchema(BaseModel):
+    video_id: int
+    chunk_id: int
+    start_time: float
+    end_time: float
+    text: str
+    embedding: List[float]
+
+# -------------------- ENDPOINTS --------------------
+# MATERIAL
+
+class AlloyDB:
+    def __init__(self):
+        self.router = APIRouter()
+        self.router.add_api_route("/material-post", self.create_material, methods=["POST"])
+        self.router.add_api_route("/material-get", self.get_all_materials, methods=["GET"])
+        self.router.add_api_route("/material-delete", self.delete_material, methods=["DELETE"])
+        self.router.add_api_route("/material-metadata-post", self.create_material_metadata, methods=["POST"])
+        self.router.add_api_route("/material-metadata-get", self.get_all_material_metadata, methods=["GET"])
+        self.router.add_api_route("/material-metadata-delete", self.delete_material_metadata, methods=["DELETE"])
+        self.router.add_api_route("/video-metadata-post", self.create_video_metadata, methods=["POST"])
+        self.router.add_api_route("/video-metadata-get", self.get_all_video_metadata, methods=["GET"])
+        self.router.add_api_route("/video-metadata-delete", self.delete_video_metadata, methods=["DELETE"])
+        self.router.add_api_route("/video-transcript-post", self.create_video_transcript, methods=["POST"])
+        self.router.add_api_route("/video-transcript-get", self.get_all_video_transcripts, methods=["GET"])
+        self.router.add_api_route("/video-transcript-delete", self.delete_video_transcript, methods=["DELETE"])
+
+    async def create_material(self, material: MaterialSchema, db: Session = Depends(get_db)):
+        db_material = Material(**material.model_dump())
+        db.add(db_material)
+        db.commit()
+        db.refresh(db_material)
+        return db_material
+
+    async def get_all_materials(self, db: Session = Depends(get_db)):
+        return db.query(Material).all()
+
+    async def delete_material(self, material_id: int, db: Session = Depends(get_db)):
+        material = db.query(Material).get(material_id)
+        if not material:
+            raise HTTPException(status_code=404, detail="Material not found")
+        db.delete(material)
+        db.commit()
+        return {"message": "Material deleted"}
+
+    async def create_material_metadata(self, meta: MaterialMetadataSchema, db: Session = Depends(get_db)):
+        db_meta = Material_Metadata(**meta.dict())
+        db.add(db_meta)
+        db.commit()
+        db.refresh(db_meta)
+        return db_meta
+
+    async def get_all_material_metadata(self, db: Session = Depends(get_db)):
+        return db.query(Material_Metadata).all()
+
+    async def delete_material_metadata(self, meta_id: int, db: Session = Depends(get_db)):
+        meta = db.query(Material_Metadata).get(meta_id)
+        if not meta:
+            raise HTTPException(status_code=404, detail="Metadata not found")
+        db.delete(meta)
+        db.commit()
+        return {"message": "Metadata deleted"}
+
+    async def create_video_metadata(self, video: VideoMetadataSchema, db: Session = Depends(get_db)):
+        db_video = Video_Metadata(**video.dict())
+        db.add(db_video)
+        db.commit()
+        db.refresh(db_video)
+        return db_video
+
+    async def get_all_video_metadata(self, db: Session = Depends(get_db)):
+        return db.query(Video_Metadata).all()
+
+    async def delete_video_metadata(self, video_id: int, db: Session = Depends(get_db)):
+        video = db.query(Video_Metadata).get(video_id)
+        if not video:
+            raise HTTPException(status_code=404, detail="Video metadata not found")
+        db.delete(video)
+        db.commit()
+        return {"message": "Video metadata deleted"}
+
+    async def create_video_transcript(self, transcript: VideoTranscriptSchema, db: Session = Depends(get_db)):
+        db_transcript = Video_Transcript(**transcript.dict())
+        db.add(db_transcript)
+        db.commit()
+        db.refresh(db_transcript)
+        return db_transcript
+
+    async def get_all_video_transcripts(self, db: Session = Depends(get_db)):
+        return db.query(Video_Transcript).all()
+
+    async def delete_video_transcript(self, transcript_id: int, db: Session = Depends(get_db)):
+        transcript = db.query(Video_Transcript).get(transcript_id)
+        if not transcript:
+            raise HTTPException(status_code=404, detail="Transcript not found")
+        db.delete(transcript)
+        db.commit()
+        return {"message": "Transcript deleted"}
+
+app = FastAPI()
+alloy_db = AlloyDB()
+app.include_router(alloy_db.router)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

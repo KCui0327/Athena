@@ -17,13 +17,13 @@ terraform {
 }
 
 provider "google" {
-  credentials = var.gcp_credentials
+  credentials = file("${path.module}/gcp_credentials.json")
   project     = var.project_id
   region      = var.region
 }
 
 provider "google-beta" {
-  credentials = var.gcp_credentials
+  credentials = file("${path.module}/gcp_credentials.json")
   project     = var.project_id
   region      = var.region
 }
@@ -31,7 +31,7 @@ provider "google-beta" {
 provider "google-beta" {
   alias                 = "no_user_project_override"
   user_project_override = false
-  credentials           = var.gcp_credentials
+  credentials           = file("${path.module}/gcp_credentials.json")
   project               = var.project_id
   region                = var.region
 }
