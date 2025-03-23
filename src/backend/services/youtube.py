@@ -266,14 +266,12 @@ class Youtube:
                 f'[top][bottom]vstack=inputs=2[v]'
             ]
             
-            # Add subtitles if available
             if subtitles_file:
                 cmd[-1] += f';[v]subtitles={subtitles_file}:force_style=\'FontSize=24,Alignment=2\'[outv]'
                 cmd.extend(['-map', '[outv]'])
             else:
                 cmd.extend(['-map', '[v]'])
             
-            # Add audio from the original chunk, also trimmed to 60 seconds
             cmd.extend([
                 '-map', '0:a', 
                 '-af', f'atrim=0:{min(actual_chunk_duration, 60)}', 
