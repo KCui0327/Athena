@@ -20,7 +20,7 @@ import {
   HelpCircleIcon, 
   HomeIcon, 
   LogOutIcon,
-  Settings2Icon, 
+  // Settings2Icon, 
   UploadIcon, 
   VideoIcon,
 } from "lucide-react";
@@ -77,11 +77,11 @@ export function AppSidebar() {
       path: "/notes/upload",
       icon: UploadIcon,
     },
-    {
-      title: "Account Settings",
-      path: "/settings",
-      icon: Settings2Icon,
-    },
+    // {
+    //   title: "Account Settings",
+    //   path: "/settings",
+    //   icon: Settings2Icon,
+    // },
   ];
 
   return (

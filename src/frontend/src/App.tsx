@@ -12,7 +12,7 @@ import NoteDetail from "./pages/NoteDetail";
 import NotesUpload from "./pages/NotesUpload";
 import Quizzes from "./pages/Quizzes";
 import VideoSnippets from "./pages/VideoSnippets";
-import Settings from "./pages/Settings";
+// import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { LazyMotion, domAnimation } from "framer-motion";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -70,14 +70,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
+            {/* <Route
               path="/settings"
               element={
                 <ProtectedRoute>
                   <Settings />
                 </ProtectedRoute>
               }
-            />
+            /> */}
             <Route
               path="/notes/:id" 
               element={

@@ -43,7 +43,7 @@ const NoteDetail = () => {
       }
     ],
     date: "2 hours ago",
-    tags: ["Physics", "Quantum"],
+    // tags: ["Physics", "Quantum"],
     pdfUrl: "/placeholder.svg", // In a real app, this would be the actual PDF URL
     videoId: "5" // ID to link to the related video
   };
@@ -104,11 +104,11 @@ const NoteDetail = () => {
             <div className="flex items-center gap-4 mt-2">
               <p className="text-sm text-muted-foreground">{note.date}</p>
               <div className="flex gap-2">
-                {note.tags.map((tag) => (
+                {/* {note.tags.map((tag) => (
                   <Badge key={tag} variant="secondary" className="text-xs">
                     {tag}
                   </Badge>
-                ))}
+                ))} */}
               </div>
             </div>
           </div>
@@ -131,29 +131,6 @@ const NoteDetail = () => {
                       )}
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-            
-            {/* PDF viewer */}
-            <Card className="h-fit">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <FileIcon className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-semibold">PDF Document</h2>
-                </div>
-                <div className="aspect-[3/4] bg-muted relative flex items-center justify-center rounded-md overflow-hidden border">
-                  <img
-                    src={note.pdfUrl}
-                    alt="PDF preview"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Button>
-                      <FileIcon className="mr-2 h-4 w-4" />
-                      Open PDF
-                    </Button>
-                  </div>
                 </div>
               </CardContent>
             </Card>
