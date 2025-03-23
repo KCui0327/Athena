@@ -36,7 +36,7 @@ const Login = () => {
         title: "Success",
         description: "You have successfully signed in",
       });
-      navigate("/dashboard");
+      navigate("/notes");
     } catch (error: any) {
       toast({
         title: "Error signing in",
@@ -56,7 +56,7 @@ const Login = () => {
         title: "Success",
         description: "You have successfully signed in with Google",
       });
-      navigate("/dashboard");
+      navigate("/notes");
     } catch (error: any) {
       toast({
         title: "Error signing in",

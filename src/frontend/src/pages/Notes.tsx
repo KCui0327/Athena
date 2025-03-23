@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,104 +12,91 @@ import { ChevronDownIcon, FilterIcon, PlusIcon, SearchIcon, SlidersIcon } from "
 import NoteCard from "@/components/ui-custom/NoteCard";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Spinner } from "../components/ui/spinner"; // You may need to create this component
+
+// Update the Material interface to match the API response
+interface Material {
+  id: number;
+  name: string;
+  summary: string | null;
+  created_at: string;
+  file_url: string | null;
+  video_url: string | null;
+  video_summary: string | null;
+  user_id: string;
+}
 
 const Notes = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMethod, setSortMethod] = useState("recent");
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Sample data for notes
-  const notes = [
-    {
-      id: 1,
-      title: "Quantum Mechanics Introduction",
-      preview: "The fundamental principles of quantum mechanics, including wave-particle duality, superposition, and measurement theory.",
-      date: "2 hours ago",
-      tags: ["Physics", "Quantum"]
-    },
-    {
-      id: 2,
-      title: "Macroeconomic Policy Effects",
-      preview: "Analysis of how fiscal and monetary policies affect inflation, employment, and economic growth in different scenarios.",
-      date: "Yesterday",
-      tags: ["Economics", "Macroeconomics"]
-    },
-    {
-      id: 3,
-      title: "Neural Network Architectures",
-      preview: "Overview of various neural network structures including CNNs, RNNs, and Transformers with their specific applications.",
-      date: "2 days ago",
-      tags: ["AI", "Machine Learning"]
-    },
-    {
-      id: 4,
-      title: "Photosynthesis Process",
-      preview: "Detailed notes on the light-dependent and light-independent reactions of photosynthesis in plant cells.",
-      date: "3 days ago",
-      tags: ["Biology", "Cellular"]
-    },
-    {
-      id: 5,
-      title: "World War II Major Battles",
-      preview: "Chronological overview of pivotal battles including Stalingrad, Normandy, Midway, and their strategic significance.",
-      date: "4 days ago",
-      tags: ["History", "World War II"]
-    },
-    {
-      id: 6,
-      title: "Organic Chemistry Functional Groups",
-      preview: "Classification and properties of different functional groups in organic compounds with reaction mechanisms.",
-      date: "5 days ago",
-      tags: ["Chemistry", "Organic"]
-    },
-    {
-      id: 7,
-      title: "Shakespeare's Hamlet Analysis",
-      preview: "Literary analysis of themes, characters, and symbolism in Shakespeare's tragedy Hamlet.",
-      date: "1 week ago",
-      tags: ["Literature", "Shakespeare"]
-    },
-    {
-      id: 8,
-      title: "Calculus: Integration Techniques",
-      preview: "Methods for solving indefinite and definite integrals including substitution, parts, and partial fractions.",
-      date: "1 week ago",
-      tags: ["Mathematics", "Calculus"]
-    },
-    {
-      id: 9,
-      title: "Supply Chain Management",
-      preview: "Overview of modern supply chain practices, optimization strategies, and digital transformation in logistics.",
-      date: "2 weeks ago",
-      tags: ["Business", "Logistics"]
-    },
-  ];
+  // Update the fetchMaterials function to use the correct API endpoint and form data
+  useEffect(() => {
+    const fetchMaterials = async () => {
+      try {
+        setIsLoading(true);
+        // Get user ID from local storage or auth context
+        const userId = localStorage.getItem('userId') || 'default-user-id';
+        
+        // Create form data for the request
+        const formData = new FormData();
+        formData.append('user_id', userId);
+        
+        const response = await fetch('/api/get-all-notes', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setMaterials(data.materials || []);
+      } catch (err) {
+        console.error('Failed to fetch materials:', err);
+        setError('Failed to load notes. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Filter notes based on search query
-  const filteredNotes = notes.filter(note => 
-    note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    note.preview.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+    fetchMaterials();
+  }, []);
 
-  // Sort the filtered notes
-  const sortedNotes = useMemo(() => {
-    const notesToSort = [...filteredNotes];
+  // Update the filtered materials to use the correct properties
+  const filteredMaterials = useMemo(() => {
+    return materials.filter(material => 
+      (material.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (material.summary?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+    );
+  }, [materials, searchQuery]);
+
+  // Update the sorting logic to use created_at
+  const sortedMaterials = useMemo(() => {
+    const materialsToSort = [...filteredMaterials];
     
     switch (sortMethod) {
       case "recent":
-        // For demo purposes - your data is already sorted by most recent
-        return notesToSort;
+        return materialsToSort.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
       case "oldest":
-        return [...notesToSort].reverse();
+        return materialsToSort.sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
       case "az":
-        return [...notesToSort].sort((a, b) => a.title.localeCompare(b.title));
+        return materialsToSort.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       case "za":
-        return [...notesToSort].sort((a, b) => b.title.localeCompare(a.title));
+        return materialsToSort.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
       default:
-        return notesToSort;
+        return materialsToSort;
     }
-  }, [filteredNotes, sortMethod]);
+  }, [filteredMaterials, sortMethod]);
 
   const handleViewNote = (noteId: number) => {
     navigate(`/notes/${noteId}`);
@@ -118,6 +105,7 @@ const Notes = () => {
   return (
     <AppShell>
       <div className="px-6 py-6 md:px-10 md:py-8">
+        {/* Header section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -130,17 +118,9 @@ const Notes = () => {
               Browse and manage all your uploaded notes
             </p>
           </div>
-          <div className="mt-4 md:mt-0">
-            <Button asChild>
-              <Link to="/notes/upload">
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Upload Notes
-              </Link>
-            </Button>
-          </div>
         </motion.div>
         
-        {/* Search and Filter */}
+        {/* Search and Filter section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -157,26 +137,12 @@ const Notes = () => {
             />
           </div>
           <div className="flex gap-3">
+            {/* Tags dropdown */}
             <DropdownMenu>
-              {/* <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-1">
-                  <FilterIcon className="h-4 w-4" />
-                  Tags
-                  <ChevronDownIcon className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger> */}
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>All Tags</DropdownMenuItem>
-                <DropdownMenuItem>Physics</DropdownMenuItem>
-                <DropdownMenuItem>Mathematics</DropdownMenuItem>
-                <DropdownMenuItem>Chemistry</DropdownMenuItem>
-                <DropdownMenuItem>Biology</DropdownMenuItem>
-                <DropdownMenuItem>Computer Science</DropdownMenuItem>
-                <DropdownMenuItem>History</DropdownMenuItem>
-                <DropdownMenuItem>Literature</DropdownMenuItem>
-                <DropdownMenuItem>Economics</DropdownMenuItem>
-              </DropdownMenuContent>
+              {/* ... your existing tags dropdown ... */}
             </DropdownMenu>
+            
+            {/* Sort dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-1">
@@ -192,33 +158,58 @@ const Notes = () => {
                 <DropdownMenuItem onSelect={() => setSortMethod("za")}>Z-A</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-           </div>
+          </div>
         </motion.div>
         
-        {/* Notes Grid */}
+        {/* Notes Grid with loading, error, and empty states */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.2 }}
           className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
         >
-          {sortedNotes.length > 0 ? (
-            sortedNotes.map((note, index) => (
+          {isLoading ? (
+            <div className="col-span-full flex justify-center py-16">
+              <div className="flex flex-col items-center">
+                <Spinner className="h-8 w-8 text-primary" />
+                <span className="mt-4 text-sm text-muted-foreground">Loading your notes...</span>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="col-span-full text-center py-16">
+              <p className="text-red-500 mb-2">{error}</p>
+              <Button variant="outline" onClick={() => window.location.reload()}>
+                Try Again
+              </Button>
+            </div>
+          ) : sortedMaterials.length > 0 ? (
+            sortedMaterials.map((material, index) => (
               <NoteCard
-                key={note.id}
-                title={note.title}
-                preview={note.preview}
-                date={note.date}
-                tags={note.tags}
+                key={material.id}
+                title={material.name || 'Untitled'}
+                preview={material.summary || 'No summary available'}
+                date={new Date(material.created_at).toLocaleDateString()}
                 index={index}
-                onView={() => handleViewNote(note.id)}
-                onEdit={() => console.log(`Edit note ${note.id}`)}
-                onDelete={() => console.log(`Delete note ${note.id}`)}
+                onView={() => handleViewNote(material.id)}
+                onEdit={() => console.log(`Edit note ${material.id}`)}
+                onDelete={() => console.log(`Delete note ${material.id}`)}
               />
             ))
           ) : (
-            <div className="col-span-full text-center py-10">
-              <p className="text-muted-foreground">No notes found matching your search.</p>
+            <div className="col-span-full text-center py-16">
+              {searchQuery ? (
+                <p className="text-muted-foreground">No notes found matching your search.</p>
+              ) : (
+                <div>
+                  <p className="text-muted-foreground mb-4">You don't have any notes yet.</p>
+                  <Button asChild>
+                    <Link to="/notes/upload">
+                      <PlusIcon className="mr-2 h-4 w-4" />
+                      Upload Your First Note
+                    </Link>
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </motion.div>

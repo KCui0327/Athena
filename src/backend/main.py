@@ -287,6 +287,18 @@ async def get_note(doc_id: str):
         raise HTTPException(status_code=404, detail="Material not found")
     return {"material": material}
 
+@app.post("/get-all-notes")
+async def get_all_notes(user_id: Annotated[str, Form(...)], db: Session = Depends(get_db)):
+    materials = db.query(Material_Metadata).filter(
+        Material_Metadata.user_id == user_id
+    ).all()
+    
+    if not materials:
+        return {"materials": []}
+    
+    return {"materials": materials}
+
+
 @app.post("/upload-material/")
 async def upload_material(
     name: Annotated[str, Form()],

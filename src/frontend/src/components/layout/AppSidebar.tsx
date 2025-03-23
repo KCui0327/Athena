@@ -71,11 +71,11 @@ export function AppSidebar() {
 
   // Main navigation menu items
   const mainNavItems = [
-    {
-      title: "Dashboard",
-      path: "/dashboard",
-      icon: HomeIcon,
-    },
+    // {
+    //   title: "Dashboard",
+    //   path: "/dashboard",
+    //   icon: HomeIcon,
+    // },
     {
       title: "My Notes",
       path: "/notes",
@@ -100,11 +100,7 @@ export function AppSidebar() {
       path: "/notes/upload",
       icon: UploadIcon,
     },
-    // {
-    //   title: "Account Settings",
-    //   path: "/settings",
-    //   icon: Settings2Icon,
-    // },
+
   ];
 
   return (

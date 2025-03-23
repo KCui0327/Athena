@@ -47,7 +47,7 @@ const Register = () => {
         title: "Success",
         description: "Your account has been created successfully",
       });
-      navigate("/dashboard");
+      navigate("/notes");
     } catch (error: any) {
       toast({
         title: "Error creating account",
@@ -67,7 +67,7 @@ const Register = () => {
         title: "Success",
         description: "You have successfully signed in with Google",
       });
-      navigate("/dashboard");
+      navigate("/notes");
     } catch (error: any) {
       toast({
         title: "Error signing in",
