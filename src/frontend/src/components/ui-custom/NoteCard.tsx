@@ -12,7 +12,7 @@ interface NoteCardProps {
   title: string;
   preview: string;
   date: string;
-  tags?: string[];
+  // tags?: string[];
   className?: string;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -24,7 +24,7 @@ const NoteCard = ({
   title, 
   preview, 
   date, 
-  tags = [], 
+  // tags = [], 
   className,
   onEdit,
   onDelete,
@@ -71,7 +71,7 @@ const NoteCard = ({
           <p className="text-muted-foreground line-clamp-3 min-h-[4.5rem]">
             {preview}
           </p>
-          {tags.length > 0 && (
+          {/* {tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-4">
               {tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="text-xs">
@@ -79,7 +79,7 @@ const NoteCard = ({
                 </Badge>
               ))}
             </div>
-          )}
+          )} */}
         </CardContent>
         <CardFooter className="text-xs text-muted-foreground border-t pt-3 mt-2">
           {date}

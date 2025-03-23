@@ -62,7 +62,7 @@ const Dashboard = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
             <p className="text-muted-foreground mt-1">
-              Welcome back! Here's an overview of your study progress.
+              Welcome back! Ready for another productive day?
             </p>
           </div>
           <div className="flex gap-3 mt-4 md:mt-0">
@@ -73,62 +73,6 @@ const Dashboard = () => {
               </Link>
             </Button>
           </div>
-        </motion.div>
-
-        {/* Stats Cards (no Study Guides) */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-          className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8"
-        >
-          <Card>
-            <CardHeader className="pb-2 flex flex-row items-center">
-              <div className="bg-primary/10 p-2 rounded-md mr-3">
-                <FileTextIcon className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-sm font-medium">Total Notes</CardTitle>
-                <CardDescription>Count of all notes</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">42</div>
-              <p className="text-xs text-muted-foreground">+7 this week</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2 flex flex-row items-center">
-              <div className="bg-amber-100 p-2 rounded-md mr-3">
-                <BrainIcon className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <CardTitle className="text-sm font-medium">Quiz Score</CardTitle>
-                <CardDescription>Average performance</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">82%</div>
-              <p className="text-xs text-muted-foreground">+5% from last month</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2 flex flex-row items-center">
-              <div className="bg-red-100 p-2 rounded-md mr-3">
-                <VideoIcon className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <CardTitle className="text-sm font-medium">Video Snippets</CardTitle>
-                <CardDescription>Generated videos</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">28</div>
-              <p className="text-xs text-muted-foreground">+4 this week</p>
-            </CardContent>
-          </Card>
         </motion.div>
 
         {/* Recent Notes */}
@@ -151,7 +95,7 @@ const Dashboard = () => {
                 title={note.title}
                 preview={note.preview}
                 date={note.date}
-                tags={note.tags}
+                // tags={note.tags}
                 index={index}
                 onView={() => console.log(`View note ${note.id}`)}
                 onEdit={() => console.log(`Edit note ${note.id}`)}

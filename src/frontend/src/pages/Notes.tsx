@@ -1,5 +1,4 @@
-
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +15,8 @@ import { motion } from "framer-motion";
 
 const Notes = () => {
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortMethod, setSortMethod] = useState("recent");
 
   // Sample data for notes
   const notes = [
@@ -84,6 +85,32 @@ const Notes = () => {
     },
   ];
 
+  // Filter notes based on search query
+  const filteredNotes = notes.filter(note => 
+    note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    note.preview.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  // Sort the filtered notes
+  const sortedNotes = useMemo(() => {
+    const notesToSort = [...filteredNotes];
+    
+    switch (sortMethod) {
+      case "recent":
+        // For demo purposes - your data is already sorted by most recent
+        return notesToSort;
+      case "oldest":
+        return [...notesToSort].reverse();
+      case "az":
+        return [...notesToSort].sort((a, b) => a.title.localeCompare(b.title));
+      case "za":
+        return [...notesToSort].sort((a, b) => b.title.localeCompare(a.title));
+      default:
+        return notesToSort;
+    }
+  }, [filteredNotes, sortMethod]);
+
   const handleViewNote = (noteId: number) => {
     navigate(`/notes/${noteId}`);
   };
@@ -125,17 +152,19 @@ const Notes = () => {
             <Input 
               placeholder="Search notes..." 
               className="pl-9"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <div className="flex gap-3">
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              {/* <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-1">
                   <FilterIcon className="h-4 w-4" />
                   Tags
                   <ChevronDownIcon className="h-4 w-4" />
                 </Button>
-              </DropdownMenuTrigger>
+              </DropdownMenuTrigger> */}
               <DropdownMenuContent align="end">
                 <DropdownMenuItem>All Tags</DropdownMenuItem>
                 <DropdownMenuItem>Physics</DropdownMenuItem>
@@ -157,13 +186,13 @@ const Notes = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>Most Recent</DropdownMenuItem>
-                <DropdownMenuItem>Oldest First</DropdownMenuItem>
-                <DropdownMenuItem>A-Z</DropdownMenuItem>
-                <DropdownMenuItem>Z-A</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setSortMethod("recent")}>Most Recent</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setSortMethod("oldest")}>Oldest First</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setSortMethod("az")}>A-Z</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setSortMethod("za")}>Z-A</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
+           </div>
         </motion.div>
         
         {/* Notes Grid */}
@@ -173,19 +202,25 @@ const Notes = () => {
           transition={{ duration: 0.3, delay: 0.2 }}
           className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
         >
-          {notes.map((note, index) => (
-            <NoteCard
-              key={note.id}
-              title={note.title}
-              preview={note.preview}
-              date={note.date}
-              tags={note.tags}
-              index={index}
-              onView={() => handleViewNote(note.id)}
-              onEdit={() => console.log(`Edit note ${note.id}`)}
-              onDelete={() => console.log(`Delete note ${note.id}`)}
-            />
-          ))}
+          {sortedNotes.length > 0 ? (
+            sortedNotes.map((note, index) => (
+              <NoteCard
+                key={note.id}
+                title={note.title}
+                preview={note.preview}
+                date={note.date}
+                tags={note.tags}
+                index={index}
+                onView={() => handleViewNote(note.id)}
+                onEdit={() => console.log(`Edit note ${note.id}`)}
+                onDelete={() => console.log(`Delete note ${note.id}`)}
+              />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-10">
+              <p className="text-muted-foreground">No notes found matching your search.</p>
+            </div>
+          )}
         </motion.div>
       </div>
     </AppShell>

@@ -29,6 +29,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT", 6543)  # Default to 6543 if not specified
 DB_NAME = os.getenv("DB_NAME")
+GCP_GATEWAY = os.getenv("GCP_GATEWAY")
 
 # Create the connection URL
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
@@ -75,14 +76,62 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def get_signed_url(filename: str) -> str:
+    # First request to get the signed URL
+    url = f"{GCP_GATEWAY}/v1/cloudstore/storage-post"
+    
+    # Prepare the JSON payload
+    payload = {
+        "filename": filename
+    }
+    
+    # Make the POST request
+    response = requests.post(
+        url,
+        headers={"Content-Type": "application/json"},
+        json=payload
+    )
+    
+    # Check if request was successful
+    if response.status_code == 200:
+        return response.json()["upload_url"]
+    else:
+        raise Exception(f"Failed to get signed URL: {response.text}")
+
 @app.get("/")
 def root():
     return {"message": "Athena backend is running"}
 
 @app.post("/summarize")
-async def summarize(notes: str = Form(...)):
-    summary = gemini.generate_summary(notes)
-    return {"summary": summary}
+async def summarize(notes: str = Form(...), video_link: str = Form(None)):
+    if not notes and not video_link:
+        raise HTTPException(status_code=400, detail="Either notes or video_link must be provided")
+    if notes:
+        # Call the external API for video summarization
+        response = requests.post(
+            f"{GCP_GATEWAY}/v1/vertexai/generate_summary",
+            params={"text": notes}
+        )
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"error": f"External API error: {response.status_code}", "message": response.text}
+    if video_link:
+        # Call the external API for video summarization
+        response = requests.post(
+            f"{GCP_GATEWAY}/v1/vertexai/summarize_video",
+            params={"video_link": video_link}
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"error": f"External API error: {response.status_code}", "message": response.text}
+    else:
+        # Use the local function for text summarization
+        summary = gemini.generate_summary(notes)
+        return {"summary": summary}
 
 @app.post("/get-video")
 async def get_video(user_id:Annotated[str, Form(...)]):
