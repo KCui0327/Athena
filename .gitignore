@@ -11,3 +11,4 @@ service_account.json
 *.json
 *.tfstate
 *.tfstate.backup
+venv
