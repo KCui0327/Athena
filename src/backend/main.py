@@ -1,9 +1,10 @@
 import random
 import os
 from dotenv import load_dotenv
+import uvicorn
 load_dotenv()
 
-from fastapi import FastAPI, Request, Form, File, UploadFile, Depends
+from fastapi import FastAPI, Request, Form, File, UploadFile, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from src.backend.services.ocr_mistral import extract_text_from_file
 from src.backend.services.gemini_client import Gemini, GeminiModel, GeminiEmbeddingModel
@@ -15,15 +16,42 @@ from typing import Annotated
 import tempfile
 import shutil
 # SQLAlchemy imports
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, Session
+import uuid
 
 # Create SQLAlchemy engine and session
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://athena_user:youaremysunshine@localhost:5432/athena")
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base.metadata.create_all(bind=engine)
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT", 6543)  # Default to 6543 if not specified
+DB_NAME = os.getenv("DB_NAME")
 
+# Create the connection URL
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+engine = create_engine(DATABASE_URL)
+Base.metadata.reflect(bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Check if tables exist before creating them
+inspector = inspect(engine)
+tables_to_check = [
+    'materials',
+    'material_metadata',
+    'video_metadata',
+    'video_transcript',
+    'questions',
+    'courses',
+    'users'
+]
+
+tables_missing = [table for table in tables_to_check if not inspector.has_table(table)]
+
+if tables_missing:
+    print(f"Creating missing tables: {', '.join(tables_missing)}")
+    Base.metadata.create_all(bind=engine)
+else:
+    print("All database tables already exist, skipping creation.")
 
 def get_db():
     db = SessionLocal()
@@ -66,6 +94,7 @@ async def get_video(user_id:Annotated[str, Form(...)], course_id:Annotated[str, 
         ).all()
     return {"materials": materials}
 
+
 @app.post("/delete-note")
 async def delete_note(user_id:Annotated[str, Form(...)], doc_id:Annotated[str, Form(...)]):
     get_db().query(Video_Metadata).filter(
@@ -77,18 +106,6 @@ async def delete_note(user_id:Annotated[str, Form(...)], doc_id:Annotated[str, F
 
 @app.post('/generate-video')
 async def generate_video(user_id:Annotated[str, Form(...)], course_id:Annotated[str, Form(...)], context:Annotated[str, Form(...)]):
-    # materials = get_db().query(Material).join(
-    #     Material_Metadata,
-    #     Material.id == Material_Metadata.material_id
-    # ).filter(
-    #     Material_Metadata.user_id == user_id,
-    #     Material_Metadata.course_id == course_id
-    # ).all()
-
-    # if not materials:
-    #     raise HTTPException(status_code=404, detail="No materials found for this user and course")
-    
-    # combined_text = " ".join(material.content for material in materials)
     youtube = Youtube(os.getenv('YOUTUBE_API_KEY'))
     search_response = youtube.search_youtube(context)
     video_id_visited = []
@@ -106,8 +123,7 @@ async def generate_video(user_id:Annotated[str, Form(...)], course_id:Annotated[
                 
                 # Process transcript and then remove all chunk files created
                 youtube.process_transcript_alternative(video_id, gemini)
-                print(" What is in the chunks folder?")
-                print(os.listdir("src/backend/services/chunks"))
+                
                 # Remove all chunk files for this video
                 chunks_dir = "src/backend/services/chunks"
                 for filename in os.listdir(chunks_dir):
@@ -118,75 +134,133 @@ async def generate_video(user_id:Annotated[str, Form(...)], course_id:Annotated[
                             print(f"Removed chunk file: {filename}")
                     except Exception as e:
                         print(f"Error removing file {file_path}: {e}")
-                        
+                
     return {"message": "Video generated"}
 
+
 @app.post("/generate-quiz")
-async def generate_quiz(user_id:Annotated[str, Form(...)], course_id:Annotated[str, Form(...)], material_id:Annotated[str, Form(...)]):
-    pass
-    # materials = get_db().query(Material).join(
-    #     Material_Metadata,
-    #     Material.id == Material_Metadata.material_id
-    # ).filter(
-    #     Material_Metadata.user_id == user_id,
-    #     Material_Metadata.course_id == course_id,
-    #     Material_Metadata.material_id = material_id
-    # ).all()
+async def generate_quiz(
+    user_id: Annotated[str, Form()], 
+    course_id: Annotated[str, Form()], 
+    material_id: Annotated[str, Form()],
+    db: Session = Depends(get_db)
+):
+    material = get_db().query(Material).join(
+        Material_Metadata,
+        Material.id == Material_Metadata.material_id
+    ).filter(
+        Material_Metadata.user_id == user_id,
+        Material_Metadata.course_id == course_id,
+        Material_Metadata.material_id == material_id,
+    ).all()
 
-    # if not materials:
-    #     raise HTTPException(status_code=404, detail="No materials found for this user and course")
+    if not material:
+        raise HTTPException(status_code=404, detail="No materials found for this user and course")
     
+    quiz_content = gemini.generate_quiz(material.content)
+
+    questions = Material(
+        question = quiz_content['question'],
+        correct_answer = quiz_content['answer'],
+        choices = quiz_content['choices']
+    )
+    db.add(questions)
+    db.commit()
 
 
-@app.post("/upload-document/")
-async def upload_document(user_id:Annotated[str, Form(...)], course_id:Annotated[str, Form(...)], file: UploadFile = File(...), db: Session = Depends(get_db)):
+@app.post("/generate-image")
+async def generate_image(
+    user_id: Annotated[str, Form(...)], 
+    course_id: Annotated[str, Form(...)], 
+    material_id: Annotated[str, Form(...)]
+):
+    db: Session = get_db()
+    
+    material = db.query(Material).join(
+        Material_Metadata,
+        Material.id == Material_Metadata.material_id
+    ).filter(
+        Material_Metadata.user_id == user_id,
+        Material_Metadata.course_id == course_id,
+        Material_Metadata.material_id == material_id,
+    ).first()
+
+    if not material:
+        raise HTTPException(status_code=404, detail="Material not found")
+
+    topic = gemini.generate_summary(material.content)
+    image_data = gemini.image_generation(topic)  # This returns raw image data
+
+    # Save image to the database
+    material.image = image_data
+    db.commit()
+
+    return {"message": "Image generated and stored successfully"}
+
+@app.get("/get-image/{material_id}")
+async def get_image(material_id: str):
+    db: Session = get_db()
+    
+    # Fetch the material record from the database
+    material = db.query(Material).filter(Material.id == material_id).first()
+    
+    if not material or not material.image:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    # Return raw binary data as an image response
+    return Response(content=material.image, media_type="image/png")
+
+@app.get("/get-note/{doc_id}")
+async def get_note(doc_id: str):
+    material = get_db().query(Material).filter(Material.id == doc_id).first()
+    if not material:
+        raise HTTPException(status_code=404, detail="Material not found")
+    return {"material": material}
+
+
+@app.post("/upload-note/")
+async def upload_note(user_id:Annotated[str, Form(...)], course_id:Annotated[str, Form(...)], file: UploadFile = File(...)):
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
         shutil.copyfileobj(file.file, temp_file)
         temp_file_path = temp_file.name
     try:
-        extracted_text = extract_text_from_file(temp_file_path)
+        pages = extract_text_from_file(temp_file_path).pages
         text = ""
-        for i, chunk in enumerate(extracted_text):
-            text += " " + chunk[0].markdown
+        for i, page in enumerate(pages):
+            page_text = page.markdown
+            embedding = gemini.generate_embedding(page_text)
+            text += " " + page_text
             material = Material(
                 filename=file.filename,
                 chunk_index=i,
                 content=text,
-                embedding=chunk[1] if len(chunk) > 1 else None
+                embedding=embedding
             )
-            db.add(material)
-            db.commit()
-        summary = gemini.generate_summary(text)
+            get_db().add(material)
+            get_db().commit()
+        summary_response = gemini.generate_summary(text)
+        summary_text = summary_response.candidates[0].content.parts[0].text
+        embedding = gemini.generate_embedding(summary_text)
         material_metadata = Material_Metadata(
             user_id=user_id,
             course_id=course_id,
             material_id=material.id,
-            summary=summary
+            summary=summary_text
         )
-        db.add(material_metadata)
-        db.commit()
-        return {"message": f"Successfully processed and stored {len(extracted_text)} chunks from {file.filename}"}
+        get_db().add(material_metadata)
+        get_db().commit()
+        return {"message": f"Successfully processed and stored {len(pages)} chunks from {file.filename}"}
     finally:
         os.unlink(temp_file_path)
 
 @app.post("/create-user/")
 async def create_user(
-    username: Annotated[str, Form(...)],
-    email: Annotated[str, Form(...)],
-    password: Annotated[str, Form(...)],
+    user_id: Annotated[str, Form(...)],
     db: Session = Depends(get_db)
 ):
-    existing_user = db.query(Users).filter(Users.email == email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="User with this email already exists")
-    
-    # Create new user
     new_user = Users(
-        username=username,
-        email=email,
-        password=password  # In a real app, you should hash this password
+        id=uuid.UUID(user_id)
     )
-    
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -194,10 +268,11 @@ async def create_user(
     return {"message": "User created successfully", "user_id": new_user.id}
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 # curl -X POST \
 #   http://127.0.0.1:8000/upload-document/ \
 #   -H "Content-Type: multipart/form-data" \
 #   -F "file=@/Users/ambroseling/Desktop/markov.pdf"
+

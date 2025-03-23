@@ -8,6 +8,7 @@ from numpy.linalg import norm
 from numpy import dot
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part
+from vertexai.preview.vision_models import ImageGenerationModel
 from src.backend.services.pydantic_models import Quiz
 from google.oauth2 import service_account
 
@@ -32,6 +33,27 @@ class Gemini:
         PROJECT_ID = 'genai-genesis-454423'
         vertexai.init(project=PROJECT_ID, location="us-central1", credentials=self.credentials)
         self.flash_model = GenerativeModel("gemini-1.5-flash-002")
+        self.image_model = ImageGenerationModel.from_pretrained("imagen-3.0-generate-002")
+
+    def image_generation(self, desc:str):
+        output_file = "input-image.png"
+        prompt = f"Generate a simple image based on the description. Ensure that there are absolutely no words, letters, or text in the image. The image should be purely visual with no readable content. This is the description: {desc}."
+        # The text prompt describing what you want to see.
+        print(prompt)
+        images = self.image_model.generate_images(
+            prompt=prompt,
+            # Optional parameters
+            number_of_images=1,
+            language="en",
+            # You can't use a seed value and watermark at the same time.
+            # add_watermark=False,
+            # seed=100,
+            aspect_ratio="1:1",
+            safety_filter_level="block_some",
+            person_generation="allow_adult",
+            )
+
+        images[0].save(location=output_file, include_generation_parameters=False)
 
     def generate_quiz(self, text:str):
         try:

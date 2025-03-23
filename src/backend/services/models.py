@@ -14,16 +14,17 @@ import uuid
 load_dotenv()
 
 # Read from .env
+
+# Create the connection URL
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT", 5432)
+DB_PORT = os.getenv("DB_PORT", 6543)  # Default to 6543 if not specified
 DB_NAME = os.getenv("DB_NAME")
 
 # Create the connection URL
-DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(DATABASE_URL)
-
 # Base model
 Base = declarative_base()
 
@@ -33,14 +34,16 @@ class Material(Base):
     id = Column(Integer, primary_key=True)
     text = Column(String, nullable=True)
     doc_id = Column(ForeignKey('material_metadata.id'), nullable=False)
+    chunk_id = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
     embedding = Column(ARRAY(Float), nullable=False)
 
 class Material_Metadata(Base):
     __tablename__ = 'material_metadata'
     id = Column(Integer, primary_key=True)
-    material_id = Column(Integer, ForeignKey('materials.id'), nullable=False)
     created_at = Column(DateTime, default=datetime.now)
+    video_url = Column(String, nullable=True)
+    video_summary = Column(String, nullable=True)
 
 class Video_Metadata(Base):
     __tablename__ = 'video_metadata'
@@ -79,8 +82,8 @@ class Users(Base):
     __tablename__ = 'users'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_at = Column(DateTime, default=datetime.now)
-
 # Run table creation
 if __name__ == "__main__":
+    Base.metadata.drop_all(engine)  # Add this line
     Base.metadata.create_all(engine)
     print("Tables created successfully.")

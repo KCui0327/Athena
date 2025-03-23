@@ -60,7 +60,7 @@ def extract_text_from_file(file_path: str) -> str:
         elif isinstance(ocr_response, dict) and "markdown_text" in ocr_response:
             return ocr_response["markdown_text"]
         else:
-            return str(ocr_response)
+            return ocr_response
 
     except Exception as e:
         return f"Error during OCR: {str(e)}"
