@@ -8,8 +8,7 @@ from numpy.linalg import norm
 from numpy import dot
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part
-
-load_dotenv()
+from datatype import Quiz
 
 class GeminiModel(Enum):
     FLASH = "gemini-2.0-flash" 
@@ -34,8 +33,15 @@ class Gemini:
 
     def generate_quiz(self, text:str):
         try:
-            prompt = f"Generate a quiz with 10 questions based on the following text: {text}"
-            return self.client.models.generate_content(model=self.model, contents=prompt)
+            prompt = f"Generate a multiple choice quiz with 4 questions and a list of the correct answers based on the following text: {text}"
+            response = self.client.models.generate_content(
+                model=GeminiModel.FLASH,
+                contents=prompt,
+                config={
+                    'response_mime_type': 'application/json',
+                    'response_schema': list[Quiz],
+            },)
+            return response
         except Exception as e:
             return f"Error during generation: {str(e)}"
 
@@ -92,6 +98,9 @@ class Gemini:
             return f"Error during generation: {str(e)}"
 
 if __name__ == "__main__":
+    load_dotenv()
+
+    print(os.getenv('GEMINI_API_KEY'))
     # gemini = Gemini(os.getenv('GEMINI_API_KEY'), GeminiModel.FLASH, GeminiEmbeddingModel.EMBEDDING)
     # print(gemini.generate_summary("Linear regresion is a type of regression analysis that models the relationship between a dependent variable and one or more independent variables. It is a simple and effective method for predicting outcomes based on input variables."))
 
@@ -101,4 +110,7 @@ if __name__ == "__main__":
 
 
     gemini = Gemini(os.getenv('GEMINI_API_KEY'), GeminiModel.FLASH, GeminiEmbeddingModel.EMBEDDING)
-    print(gemini.generate_summary_from_video("https://www.youtube.com/watch?v=aircAruvnKk&t=1s&ab_channel=3Blue1Brown"))
+    video_summary = gemini.generate_summary_from_video("https://www.youtube.com/watch?v=aircAruvnKk&t=1s&ab_channel=3Blue1Brown")
+    #print(video_summary)
+
+    print(gemini.generate_quiz(video_summary))
