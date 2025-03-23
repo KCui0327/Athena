@@ -1,0 +1,108 @@
+1
+00:00:00,000 --> 00:00:05,399
+things like deep fakes these are all
+
+2
+00:00:00,000 --> 00:00:05,198
+within the realm of AI but how do they
+
+3
+00:00:02,879 --> 00:00:06,959
+fit within each other how are they
+
+4
+00:00:05,199 --> 00:00:08,880
+related to each other we're going to
+
+5
+00:00:06,959 --> 00:00:10,440
+take a look at that in this video and
+
+6
+00:00:08,880 --> 00:00:13,400
+try to explain how all these
+
+7
+00:00:10,439 --> 00:00:15,039
+Technologies relate and how we can use
+
+8
+00:00:13,400 --> 00:00:17,160
+them first off a little bit of a
+
+9
+00:00:15,040 --> 00:00:19,319
+disclaimer I'm going to have to simplify
+
+10
+00:00:17,159 --> 00:00:22,519
+some of these Concepts in order to not
+
+11
+00:00:19,319 --> 00:00:24,200
+make this video last for a week so those
+
+12
+00:00:22,520 --> 00:00:27,080
+of you that are really deep experts in
+
+13
+00:00:24,200 --> 00:00:28,999
+the field apologies in advance but we're
+
+14
+00:00:27,079 --> 00:00:30,998
+going to try to make this simple and and
+
+15
+00:00:28,999 --> 00:00:33,319
+that will involve some generalizations
+
+16
+00:00:30,999 --> 00:00:36,120
+first of all let's start with AI
+
+17
+00:00:33,319 --> 00:00:39,080
+artificial intelligence is basically
+
+18
+00:00:36,120 --> 00:00:42,319
+trying to simulate with a computer
+
+19
+00:00:39,079 --> 00:00:45,079
+something that would match or exceed
+
+20
+00:00:42,319 --> 00:00:46,319
+human intelligence what is intelligence
+
+21
+00:00:45,079 --> 00:00:47,998
+well it could be a lot of different
+
+22
+00:00:46,319 --> 00:00:51,080
+things but generally we tend to think of
+
+23
+00:00:47,999 --> 00:00:53,400
+it as the ability to learn to infer and
+
+24
+00:00:51,079 --> 00:00:55,119
+to reason things like that so that's
+
+25
+00:00:53,400 --> 00:00:58,879
+what we're trying to do in the broad
+
+26
+00:00:55,120 --> 00:01:00,000
+field of AI of artificial intelligence
+
+27
+00:00:58,879 --> 00:01:00,000
+and if we look at a timeline of AI it
+

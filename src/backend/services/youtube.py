@@ -2,11 +2,12 @@ import json
 import random
 import yt_dlp
 import os
+from pytube import extract
 import requests
 import googleapiclient.discovery
 from youtube_transcript_api import YouTubeTranscriptApi
 from dotenv import load_dotenv
-from src.backend.services.datatype import VideoSegment
+from src.backend.services.pydantic_models import VideoSegment
 from src.backend.services.gemini_client import Gemini, GeminiModel, GeminiEmbeddingModel
 from src.backend.services.cohere_client import Cohere
 from src.backend.services.groq_client import sentence_slicer, SentenceSlicer
@@ -64,11 +65,40 @@ class Youtube:
             print(f'Title: {search_result.title}')  
             print()
 
+    def get_most_important_section(self, transcript, gemini:Gemini):
+        contents = [
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "text": "Return the most important consequtive sentences of this transcript that talk about the most important topics of the video. Only return the exact sentences from the transcript. Do not go over 60 seconds of content. This is the transcript: " + transcript
+                    }
+                ]
+            }
+        ]
+        response = gemini.flash_model.generate_content(contents)
+        return response.text
+
     def download_youtube_transcript(self, video_id:str):
         ytt_api = YouTubeTranscriptApi()
         response = ytt_api.fetch(video_id)
         return response
-    
+
+    def process_transcript_alternative(self, video_id:str, gemini:Gemini):
+        fetched_transcript = self.download_youtube_transcript(video_id)
+        cleaned_text = " ".join(" ".join(snippet.text for snippet in fetched_transcript).replace(",", "").split())
+        response = self.get_most_important_section(cleaned_text, gemini).strip().lower()
+        time_stamps = [0, 0]
+        for snippet in fetched_transcript:
+            chunk = snippet.text
+            if chunk.strip().lower() in response:
+                if time_stamps[0] == 0:
+                    time_stamps[0] = snippet.start
+                else:
+                    time_stamps[1] = snippet.start + snippet.duration
+                
+        self.download_youtube_chunk(video_id, time_stamps[0], time_stamps[1], "chunks")
+         
     def process_transcript(self, video_id:str, target_str:str, transcript:list[dict], co_client:Cohere) -> list[VideoSegment]:
         # The transcript is a list of dictionaries, not an object with snippets attribute
         snippets = transcript
@@ -109,8 +139,8 @@ class Youtube:
                     if similarity > SIMLIARITY_THRESHOLD:
                         video_segment["download"] = True
                         video_segment["subtitles"] = self.extract_segment_subtitles(snippets, video_segment["start_time"], video_segment["end_time"])
-                        random_int = random.randint(0, len(os.listdir("downloads")) - 1)
-                        brainrot_video_path = os.path.join("downloads", os.listdir("downloads")[random_int])
+                        random_int = random.randint(0, len(os.listdir("src/backend/services/downloads")) - 1)
+                        brainrot_video_path = os.path.join("src/backend/services/downloads", os.listdir("src/backend/services/downloads")[random_int])
                         self.download_youtube_chunk(video_id, video_segment["start_time"], video_segment["end_time"], "chunks", video_segment["subtitles"], overlay_video_path=brainrot_video_path)
                         video_segment["chunk_id"] = chunk_id
                         video_segments.append(VideoSegment(**video_segment))
@@ -152,7 +182,7 @@ class Youtube:
         
         return segment_subtitles
 
-    def download_youtube_chunk(self, url:str, start_time:float, end_time:float, output_path:str, subtitles=None, overlay_video_path=None):
+    def download_youtube_chunk(self, video_id:str, start_time:float, end_time:float, output_path:str, subtitles=None, overlay_video_path=None):
         """
         Download a specific chunk of a YouTube video as MP4 and optionally overlay another video with subtitles
         
@@ -166,13 +196,11 @@ class Youtube:
         """
         os.makedirs(output_path, exist_ok=True)
         
-        # Ensure the chunk is no longer than 60 seconds (1 minute)
         original_end_time = end_time
         duration = end_time - start_time
         if duration > 60:
             end_time = start_time + 60
             print(f"Limiting chunk duration to 60 seconds (1 minute), new end time: {end_time}")
-            
         chunk_filename = f"{output_path}/chunk_{start_time}_{end_time}.mp4"
         final_output = f"{output_path}/final_{start_time}_{end_time}.mp4"
         
@@ -202,7 +230,7 @@ class Youtube:
             
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([f"https://www.youtube.com/watch?v={url}"])
+                    ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
             except Exception as e:
                 print(f"Error downloading chunk {start_time}-{end_time}: {e}")
                 return None
@@ -214,7 +242,7 @@ class Youtube:
         # Create subtitles file if provided
         subtitles_file = None
         if subtitles:
-            # Filter subtitles to only include those within our adjusted time range
+                # Filter subtitles to only include those within our adjusted time range
             adjusted_subtitles = []
             for sub in subtitles:
                 if sub['start'] < (end_time - start_time):
@@ -227,7 +255,6 @@ class Youtube:
             subtitles_file = f"{output_path}/subs_{start_time}_{end_time}.srt"
             self.create_srt_file(adjusted_subtitles, subtitles_file)
         
-        # Calculate actual duration of the chunk (which is now guaranteed to be ≤ 60 seconds)
         chunk_duration = end_time - start_time
         
         # Use ffmpeg to create the final video with overlay and subtitles
@@ -374,7 +401,11 @@ if __name__ == "__main__":
                 video_id_visited.append(search_result.video_id)
                 video_id = search_result.video_id
                 transcript = youtube.download_youtube_transcript(video_id)
-                video_segments = youtube.process_transcript(video_id, target_str, transcript, co_client)
+                random_int = random.randint(0, 1)
+                if random_int == 0:
+                    video_segments = youtube.process_transcript(video_id, target_str, transcript, co_client)
+                else:
+                    video_segments = youtube.process_transcript_alternative(video_id, gemini)
                 if len(video_segments) > 0:
                     print(f"Found {len(video_segments)} segments")
                     for segment in video_segments:

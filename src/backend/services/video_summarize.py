@@ -99,13 +99,10 @@ if __name__ == "__main__":
 
     time_stamps = [0, 0]
     for snippet in fetched_transcript:
-        #print(snippet)
         chunk = snippet.text
         if chunk.strip().lower() in response:
-            # Append the start time for the first match
             if time_stamps[0] == 0:
                 time_stamps[0] = snippet.start
-            # Always append the end time for subsequent matches
             else:
                 time_stamps[1] = snippet.start + snippet.duration
                 

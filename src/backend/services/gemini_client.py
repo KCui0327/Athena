@@ -8,7 +8,9 @@ from numpy.linalg import norm
 from numpy import dot
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part
-from datatype import Quiz
+from src.backend.services.pydantic_models import Quiz
+from google.oauth2 import service_account
+
 
 class GeminiModel(Enum):
     FLASH = "gemini-2.0-flash" 
@@ -24,6 +26,12 @@ class Gemini:
         self.embedding_model = embedding_model
         self.api_key = api_key
         self.client = genai.Client(api_key=self.api_key)
+        self.credentials = service_account.Credentials.from_service_account_file(
+            'service_account.json'
+        )
+        PROJECT_ID = 'genai-genesis-454423'
+        vertexai.init(project=PROJECT_ID, location="us-central1", credentials=self.credentials)
+        self.flash_model = GenerativeModel("gemini-1.5-flash-002")
 
     def generate_quiz(self, text:str):
         try:
