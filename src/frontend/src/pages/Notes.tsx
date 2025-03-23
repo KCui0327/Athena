@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { getAuth } from "firebase/auth";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +13,8 @@ import { ChevronDownIcon, FilterIcon, PlusIcon, SearchIcon, SlidersIcon } from "
 import NoteCard from "@/components/ui-custom/NoteCard";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Spinner } from "../components/ui/spinner"; // You may need to create this component
+import { Spinner } from "../components/ui/spinner";
 
-// Update the Material interface to match the API response
 interface Material {
   id: number;
   name: string;
@@ -34,32 +34,37 @@ const Notes = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Update the fetchMaterials function to use the correct API endpoint and form data
   useEffect(() => {
     const fetchMaterials = async () => {
       try {
         setIsLoading(true);
-        // Get user ID from local storage or auth context
-        const userId = localStorage.getItem('userId') || 'default-user-id';
-        
-        // Create form data for the request
+
+        const auth = getAuth();
+        const user = auth.currentUser;
+
+        if (!user) {
+          setError("You must be logged in to view notes.");
+          setIsLoading(false);
+          return;
+        }
+
         const formData = new FormData();
-        formData.append('user_id', userId);
-        
-        const response = await fetch('/api/get-all-notes', {
-          method: 'POST',
-          body: formData
+        formData.append("user_id", user.uid);
+
+        const response = await fetch("http://localhost:8000/get-all-notes", {
+          method: "POST",
+          body: formData,
         });
-        
+
         if (!response.ok) {
           throw new Error(`Error: ${response.status}`);
         }
-        
+
         const data = await response.json();
         setMaterials(data.materials || []);
       } catch (err) {
-        console.error('Failed to fetch materials:', err);
-        setError('Failed to load notes. Please try again later.');
+        console.error("Failed to fetch materials:", err);
+        setError("Failed to load notes. Please try again later.");
       } finally {
         setIsLoading(false);
       }
@@ -68,25 +73,22 @@ const Notes = () => {
     fetchMaterials();
   }, []);
 
-  // Update the filtered materials to use the correct properties
   const filteredMaterials = useMemo(() => {
-    return materials.filter(material => 
+    return materials.filter(material =>
       (material.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
       (material.summary?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     );
   }, [materials, searchQuery]);
 
-  // Update the sorting logic to use created_at
   const sortedMaterials = useMemo(() => {
     const materialsToSort = [...filteredMaterials];
-    
     switch (sortMethod) {
       case "recent":
-        return materialsToSort.sort((a, b) => 
+        return materialsToSort.sort((a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
       case "oldest":
-        return materialsToSort.sort((a, b) => 
+        return materialsToSort.sort((a, b) =>
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
       case "az":
@@ -105,7 +107,6 @@ const Notes = () => {
   return (
     <AppShell>
       <div className="px-6 py-6 md:px-10 md:py-8">
-        {/* Header section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -119,8 +120,7 @@ const Notes = () => {
             </p>
           </div>
         </motion.div>
-        
-        {/* Search and Filter section */}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -129,20 +129,17 @@ const Notes = () => {
         >
           <div className="relative flex-1">
             <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input 
-              placeholder="Search notes..." 
+            <Input
+              placeholder="Search notes..."
               className="pl-9"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <div className="flex gap-3">
-            {/* Tags dropdown */}
             <DropdownMenu>
-              {/* ... your existing tags dropdown ... */}
+              {/* Optional future filter by tag */}
             </DropdownMenu>
-            
-            {/* Sort dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-1">
@@ -160,8 +157,7 @@ const Notes = () => {
             </DropdownMenu>
           </div>
         </motion.div>
-        
-        {/* Notes Grid with loading, error, and empty states */}
+
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
