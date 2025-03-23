@@ -76,6 +76,21 @@ async def generate_video(user_id:Annotated[str, Form(...)], course_id:Annotated[
             youtube.download_youtube_chunk(video_segment.video_id, video_segment.start_time, video_segment.end_time, "chunks", video_segment.subtitles)
     return {"message": "Video generated"}
 
+@app.post("/generate-quiz")
+async def generate_quiz(user_id:Annotated[str, Form(...)], course_id:Annotated[str, Form(...)], material_id:Annotated[str, Form(...)]):
+    materials = get_db().query(Material).join(
+        Material_Metadata,
+        Material.id == Material_Metadata.material_id
+    ).filter(
+        Material_Metadata.user_id == user_id,
+        Material_Metadata.course_id == course_id,
+        Material_Metadata.material_id = material_id
+    ).all()
+
+    if not materials:
+        raise HTTPException(status_code=404, detail="No materials found for this user and course")
+    
+
 
 @app.post("/upload-document/")
 async def upload_document(user_id:Annotated[str, Form(...)], course_id:Annotated[str, Form(...)], file: UploadFile = File(...), db: Session = Depends(get_db)):

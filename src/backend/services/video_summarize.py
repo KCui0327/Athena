@@ -25,7 +25,7 @@ image_model = ImageGenerationModel.from_pretrained("imagen-3.0-generate-002")
 def summarize_video(link, type):
     contents = [
         # Text prompt
-        "Describe this video in a few sentences.",
+        "Generate a simple, one sentence summary for this video",
         #"Provide one caption for this video in a way that is intriguiging and clickbaity."
         #Youtube video of 3blue1brown
         Part.from_uri(link, type),
@@ -36,7 +36,7 @@ def summarize_video(link, type):
 # TODO(developer): Image generation
 def image_generation(desc):
     output_file = "input-image.png"
-    prompt = f"Generate a simple image based on the description. Ensure that there are absolutely no words, letters, or text in the image. The image should be purely visual with no readable content. This is the description: {desc}."
+    prompt = f"Generate a cartoon picture for this description with simple colors and solid lines. This is the description: {desc}."
     # The text prompt describing what you want to see.
     print(prompt)
     images = image_model.generate_images(
@@ -69,7 +69,7 @@ def get_most_important_section(transcript):
             "role": "user",
             "parts": [
                 {
-                    "text": "Return the most important consequtive sentences of this transcript that talk about the most important topics of the video. Only return the exact sentences from the transcript. This is the transcript: " + transcript
+                    "text": "Return the most important consequtive sentences of this transcript that talk about the most important topics of the video. Only return the exact sentences from the transcript. Do not go over 60 seconds of content. This is the transcript: " + transcript
                 }
             ]
         }
@@ -88,10 +88,10 @@ if __name__ == "__main__":
     fetched_transcript = ytt_api.fetch(id) 
     print(fetched_transcript)
     # Extract text, join it, remove commas, and fix spacing in one go
-    cleaned_text = " ".join(" ".join(snippet.text for snippet in fetched_transcript).replace(",", "").split())
+    #cleaned_text = " ".join(" ".join(snippet.text for snippet in fetched_transcript).replace(",", "").split())
     #print(cleaned_text)
 
-    response = get_most_important_section(cleaned_text)
+    response = get_most_important_section(fetched_transcript)
 
     # Extract sentences using regex
     response.strip().lower()
