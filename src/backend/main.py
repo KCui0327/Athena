@@ -298,9 +298,7 @@ async def create_user(
     user_id: Annotated[str, Form(...)],
     db: Session = Depends(get_db)
 ):
-    new_user = Users(
-        id=user_id
-    )
+    new_user = Users(id=user_id)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
