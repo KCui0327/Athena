@@ -20,6 +20,8 @@ import shutil
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, Session
 import uuid
+from supabase import create_client, Client
+from datetime import datetime
 
 # Create SQLAlchemy engine and session
 DB_USER = os.getenv("DB_USER")
@@ -73,29 +75,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_signed_url(filename: str) -> str:
-    # First request to get the signed URL
-    url = "https://athena-gateway-1qsda12j.uc.gateway.dev/v1/cloudstore/storage-post"
-    
-    # Prepare the JSON payload
-    payload = {
-        "filename": filename
-    }
-    
-    # Make the POST request
-    response = requests.post(
-        url,
-        headers={"Content-Type": "application/json"},
-        json=payload
-    )
-    
-    # Check if request was successful
-    if response.status_code == 200:
-        return response.json()["upload_url"]
-    else:
-        raise Exception(f"Failed to get signed URL: {response.text}")
-
-
 @app.get("/")
 def root():
     return {"message": "Athena backend is running"}
@@ -106,17 +85,11 @@ async def summarize(notes: str = Form(...)):
     return {"summary": summary}
 
 @app.post("/get-video")
-async def get_video(user_id:Annotated[str, Form(...)], course_id:Annotated[str, Form(...)]):
-    if course_id == "":
-        materials = get_db().query(Video_Metadata).filter(
-            Video_Metadata.user_id == user_id
-        ).all()
-    else:
-        materials = get_db().query(Video_Metadata).filter(
-            Video_Metadata.user_id == user_id,
-            Video_Metadata.course_id == course_id
-        ).all()
-    return {"materials": materials}
+async def get_video(user_id:Annotated[str, Form(...)]):
+    videos = get_db().query(Video_Metadata).filter(
+        Video_Metadata.user_id == user_id
+    ).all()
+    return {"videos": videos}
 
 
 @app.post("/delete-note")
@@ -129,7 +102,7 @@ async def delete_note(user_id:Annotated[str, Form(...)], doc_id:Annotated[str, F
 
 
 @app.post('/generate-video')
-async def generate_video(user_id:Annotated[str, Form(...)], course_id:Annotated[str, Form(...)], context:Annotated[str, Form(...)]):
+async def generate_video(user_id:Annotated[str, Form(...)], context:Annotated[str, Form(...)]):
     youtube = Youtube(os.getenv('YOUTUBE_API_KEY'))
     search_response = youtube.search_youtube(context)
     video_id_visited = []
@@ -139,27 +112,54 @@ async def generate_video(user_id:Annotated[str, Form(...)], course_id:Annotated[
             if search_result.video_id not in video_id_visited:
                 if len(video_id_visited) >= video_limit:
                     break
-                print(f"\nProcessing video {search_result.video_id}...")
-                print(f"__________________________________________________________")
-                video_id_visited.append(search_result.video_id)
+                
                 video_id = search_result.video_id
-                transcript = youtube.download_youtube_transcript(video_id)
+                try:
+                    # Check if directories exist
+                    chunks_dir = "src/backend/services/chunks"
+                    downloads_dir = "src/backend/services/downloads"
+                    os.makedirs(chunks_dir, exist_ok=True)
+                    os.makedirs(downloads_dir, exist_ok=True)
+
+                    print(f"\nProcessing video {video_id}...")
+                    
+                    transcript = youtube.download_youtube_transcript(video_id)
+                    if not transcript:
+                        print(f"No transcript available for video {video_id}")
+                        continue
+                        
+                    chunk_path, output_path, subtitles_file, video_length = youtube.process_transcript_alternative(video_id, gemini)
+                    if not os.path.exists(output_path):
+                        print(f"Failed to create output video at {output_path}")
+                        continue
+
+
+
+                    video_metadata = Video_Metadata(
+                        video_id=video_id,
+                        video_summary="",
+                        length=video_length,
+                        user_id=user_id,
+                    )
+
+                    db = next(get_db())
+                    db.add(video_metadata)
+                    db.commit()
+                    video_id_visited.append(video_id)
+                    
+ 
+                    
+                except Exception as e:
+                    print(f"Error processing video {video_id}: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
+                    continue
                 
-                # Process transcript and then remove all chunk files created
-                youtube.process_transcript_alternative(video_id, gemini)
-                
-                # Remove all chunk files for this video
-                chunks_dir = "src/backend/services/chunks"
-                for filename in os.listdir(chunks_dir):
-                    file_path = os.path.join(chunks_dir, filename)
-                    try:
-                        if os.path.isfile(file_path):
-                            os.remove(file_path)
-                            print(f"Removed chunk file: {filename}")
-                    except Exception as e:
-                        print(f"Error removing file {file_path}: {e}")
-                
-    return {"message": "Video generated"}
+    return {
+        "message": "Video processing complete",
+        "videos_processed": len(video_id_visited),
+        "processed_ids": video_id_visited
+    }
 
 
 @app.post("/generate-quiz")
@@ -287,6 +287,7 @@ async def upload_material(
         # Generate embeddings for the full text
         summary = gemini.generate_summary(text)
         material_metadata.summary = str(summary.text)
+        material_metadata.file_url = get_signed_url(temp_file_path)
         material_metadata.video_url = video_url
         db.commit()
         return {"message": f"Successfully processed and stored {len(pages)} chunks from {file.filename}"}

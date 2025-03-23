@@ -47,12 +47,16 @@ class Material_Metadata(Base):
     video_summary = Column(String, nullable=True)
     file_url = Column(String, nullable=True)
     user_id = Column(ForeignKey('users.id'), nullable=False)
+    summary = Column(String, nullable=True)
 
 class Video_Metadata(Base):
     __tablename__ = 'video_metadata'
     id = Column(Integer, primary_key=True)
+    user_id = Column(ForeignKey('users.id'), nullable=False)
     video_id = Column(String, nullable=False)
     length = Column(Integer, nullable=False)
+    video_summary = Column(String, nullable=True)
+    video_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
 
 class Video_Transcript(Base):

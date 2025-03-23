@@ -89,14 +89,34 @@ class Youtube:
                     time_stamps[0] = snippet.start
                 else:
                     time_stamps[1] = snippet.start + snippet.duration
+                # Make timestamps relative to chunk start time
                 transcript_segment.append({
                     "text": snippet.text,
-                    "start": snippet.start,
+                    "start": snippet.start - time_stamps[0],  # Make start time relative
                     "duration": snippet.duration
                 })
+
+        if not transcript_segment:
+            print("No matching segments found in transcript")
+            return None, None, None
+
         brainrot_video_path = os.path.join("src/backend/services/downloads", os.listdir("src/backend/services/downloads")[random.randint(0, len(os.listdir("src/backend/services/downloads")) - 1)])
-        self.download_youtube_chunk(video_id, time_stamps[0], time_stamps[1], "src/backend/services/chunks", transcript_segment, overlay_video_path=brainrot_video_path)
-   
+        
+        # Add debug logging
+        print(f"Time stamps: {time_stamps}")
+        print(f"Number of subtitle segments: {len(transcript_segment)}")
+        
+        chunk_path, final_path, subtitles_file = self.download_youtube_chunk(
+            video_id, 
+            time_stamps[0], 
+            time_stamps[1], 
+            "src/backend/services/chunks", 
+            transcript_segment, 
+            overlay_video_path=brainrot_video_path
+        )
+        return chunk_path, final_path, subtitles_file, time_stamps[1] - time_stamps[0]
+    
+
     def process_transcript(self, video_id:str, target_str:str, transcript:list[dict], co_client:Cohere) -> list[VideoSegment]:
         # The transcript is a list of dictionaries, not an object with snippets attribute
         snippets = transcript
@@ -200,7 +220,7 @@ class Youtube:
             end_time = start_time + 60
             print(f"Limiting chunk duration to 60 seconds (1 minute), new end time: {end_time}")
         chunk_filename = f"{output_path}/chunk_{start_time}_{end_time}.mp4"
-        final_output = f"{output_path}/final_{start_time}_{end_time}.mp4"
+        final_output = f"{output_path}/{video_id}_{start_time}_{end_time}.mp4"
         
         # Skip if the final file already exists
         if os.path.exists(final_output):
@@ -240,7 +260,7 @@ class Youtube:
         # Create subtitles file if provided
         subtitles_file = None
         if subtitles:
-                # Filter subtitles to only include those within our adjusted time range
+            # Filter subtitles to only include those within our adjusted time range
             adjusted_subtitles = []
             for sub in subtitles:
                 if sub['start'] < (end_time - start_time):
@@ -250,9 +270,9 @@ class Youtube:
                         sub['duration'] = 60 - sub['start']
                     adjusted_subtitles.append(sub)
                 
-            subtitles_file = f"{output_path}/subs_{start_time}_{end_time}.srt"
+            subtitles_file = f"{output_path}/subs_{video_id}_{start_time}_{end_time}.srt"
             self.create_srt_file(adjusted_subtitles, subtitles_file)
-        
+        assert os.path.exists(subtitles_file), f"Subtitles file {subtitles_file} does not exist"
         chunk_duration = end_time - start_time
         
         # Use ffmpeg to create the final video with overlay and subtitles
@@ -292,7 +312,9 @@ class Youtube:
             ]
             
             if subtitles_file:
-                cmd[-1] += f';[v]subtitles={subtitles_file}:force_style=\'FontSize=24,Alignment=2\'[outv]'
+                # Escape the path for FFmpeg
+                escaped_subtitles_path = subtitles_file.replace("'", "'\\''")
+                cmd[-1] += f';[v]subtitles=\'{escaped_subtitles_path}\':force_style=\'FontSize=24,Alignment=2\'[outv]'
                 cmd.extend(['-map', '[outv]'])
             else:
                 cmd.extend(['-map', '[v]'])
@@ -315,21 +337,14 @@ class Youtube:
             print(f"Final output duration: {final_duration} seconds")
             
             # Remove the chunk file after successful creation of the final output
-            if os.path.exists(chunk_filename) and os.path.exists(final_output):
-                os.remove(chunk_filename)
-                print(f"Removed temporary chunk file: {chunk_filename}")
-                
-                # Also remove subtitle file if it exists
-                if subtitles_file and os.path.exists(subtitles_file):
-                    os.remove(subtitles_file)
-                    print(f"Removed temporary subtitle file: {subtitles_file}")
+
             
-            return final_output
+            return chunk_filename, final_output, subtitles_file
             
         except Exception as e:
             print(f"Error creating overlay video: {e}")
             # Return the original chunk if overlay fails
-            return chunk_filename
+            return chunk_filename, final_output, subtitles_file
             
     def download_youtube_video(self, video_id, output_path, cookies_file=None, browser_cookies=None):
         """
@@ -368,15 +383,35 @@ class Youtube:
 
     def create_srt_file(self, subtitles:list[dict], output_file:str):
         """Create an SRT subtitle file from a list of subtitle dictionaries"""
-        with open(output_file, 'w', encoding='utf-8') as f:
-            for i, sub in enumerate(subtitles, 1):
-                start_time_str = self.format_time(sub['start'])
-                end_time_str = self.format_time(sub['start'] + sub['duration'])
-                
-                f.write(f"{i}\n")
-                f.write(f"{start_time_str} --> {end_time_str}\n")
-                f.write(f"{sub['text']}\n\n")
-                
+        try:
+            print(f"Creating SRT file at: {output_file}")
+            print(f"Number of subtitles: {len(subtitles)}")
+            
+            with open(output_file, 'w', encoding='utf-8') as f:
+                for i, sub in enumerate(subtitles, 1):
+                    start_time_str = self.format_time(sub['start'])
+                    end_time_str = self.format_time(sub['start'] + sub['duration'])
+                    
+                    print(f"Writing subtitle {i}: {start_time_str} --> {end_time_str}")
+                    
+                    f.write(f"{i}\n")
+                    f.write(f"{start_time_str} --> {end_time_str}\n")
+                    f.write(f"{sub['text']}\n\n")
+            
+            # Verify file was created
+            if os.path.exists(output_file):
+                print(f"Successfully created SRT file at {output_file}")
+                # Print file contents for debugging
+                with open(output_file, 'r', encoding='utf-8') as f:
+                    print("SRT file contents:")
+                    print(f.read())
+            else:
+                print(f"Failed to create SRT file at {output_file}")
+            
+        except Exception as e:
+            print(f"Error creating SRT file: {str(e)}")
+            raise
+
     def format_time(self, seconds:float) -> str:
         """Format seconds as HH:MM:SS,mmm for SRT files"""
         hours = int(seconds // 3600)

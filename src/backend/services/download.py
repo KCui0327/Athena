@@ -5,7 +5,7 @@ if __name__ == "__main__":
     youtube = Youtube(os.getenv('YOUTUBE_API_KEY'))
     
     # The URL format should be just the video ID, not including the playlist parameter
-    video_id = "-9lP95Qo-I0"  # Extracted from your original URL
+    video_id = "cbsiZQganXc"  # Extracted from your original URL
     
     # Add authentication options
     cookies_file = os.path.expanduser("~/cookies.txt")  # Path to your cookies file
