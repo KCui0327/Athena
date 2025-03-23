@@ -220,35 +220,39 @@ async def get_note(doc_id: str):
 
 @app.post("/upload-note/")
 async def upload_note(user_id:Annotated[str, Form(...)], course_id:Annotated[str, Form(...)], file: UploadFile = File(...)):
+    
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
         shutil.copyfileobj(file.file, temp_file)
         temp_file_path = temp_file.name
     try:
+        # First create the metadata
+        material_metadata = Material_Metadata(
+            video_url=None,  # or whatever appropriate
+            video_summary=None  # or whatever appropriate
+        )
+        db = next(get_db())
+        db.add(material_metadata)
+        db.commit()
+        db.refresh(material_metadata)
+
         pages = extract_text_from_file(temp_file_path).pages
         text = ""
         for i, page in enumerate(pages):
             page_text = page.markdown
-            embedding = gemini.generate_embedding(page_text)
+            embedding = co_client.embed([page_text]).embeddings.float[0]
             text += " " + page_text
             material = Material(
-                filename=file.filename,
-                chunk_index=i,
-                content=text,
+                text=text,
+                doc_id=material_metadata.id,  # Use the id from metadata
+                chunk_id=i,
                 embedding=embedding
             )
-            get_db().add(material)
-            get_db().commit()
-        summary_response = gemini.generate_summary(text)
-        summary_text = summary_response.candidates[0].content.parts[0].text
-        embedding = gemini.generate_embedding(summary_text)
-        material_metadata = Material_Metadata(
-            user_id=user_id,
-            course_id=course_id,
-            material_id=material.id,
-            summary=summary_text
-        )
-        get_db().add(material_metadata)
-        get_db().commit()
+            db.add(material)
+            db.commit()
+        # Generate embeddings for the full text
+        summary = gemini.generate_summary(text)
+        material_metadata.summary = str(summary.text)
+        db.commit()
         return {"message": f"Successfully processed and stored {len(pages)} chunks from {file.filename}"}
     finally:
         os.unlink(temp_file_path)
