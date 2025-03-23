@@ -103,15 +103,22 @@ async def generate_video(user_id:Annotated[str, Form(...)], course_id:Annotated[
                 video_id_visited.append(search_result.video_id)
                 video_id = search_result.video_id
                 transcript = youtube.download_youtube_transcript(video_id)
-                random_int = random.randint(0, 1)
-
-                # if random_int == 0:
-                #     print("Processing transcript with Simon's method")
-                #     video_segments = youtube.process_transcript(video_id, context, transcript, co_client)
-                # else:
-                #     print("Processing transcript with Ambrose's method")
+                
+                # Process transcript and then remove all chunk files created
                 youtube.process_transcript_alternative(video_id, gemini)
-
+                print(" What is in the chunks folder?")
+                print(os.listdir("src/backend/services/chunks"))
+                # Remove all chunk files for this video
+                chunks_dir = "src/backend/services/chunks"
+                for filename in os.listdir(chunks_dir):
+                    file_path = os.path.join(chunks_dir, filename)
+                    try:
+                        if os.path.isfile(file_path):
+                            os.remove(file_path)
+                            print(f"Removed chunk file: {filename}")
+                    except Exception as e:
+                        print(f"Error removing file {file_path}: {e}")
+                        
     return {"message": "Video generated"}
 
 @app.post("/generate-quiz")

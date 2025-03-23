@@ -65,18 +65,9 @@ class Youtube:
             print(f'Title: {search_result.title}')  
             print()
 
-    def get_most_important_section(self, transcript, gemini:Gemini):
-        contents = [
-            {
-                "role": "user",
-                "parts": [
-                    {
-                        "text": "Return the most important consequtive sentences of this transcript that talk about the most important topics of the video. Only return the exact sentences from the transcript. Do not go over 60 seconds of content. This is the transcript: " + transcript
-                    }
-                ]
-            }
-        ]
-        response = gemini.flash_model.generate_content(contents)
+    def get_most_important_section(self, transcript, gemini):
+        prompt = f"Return the most important consecutive sentences of this transcript that talk about the most important topics of the video. Only return the exact sentences from the transcript. Do not go over 60 seconds of content. This is the transcript: {transcript}"
+        response = gemini.client.models.generate_content(model=gemini.model, contents=prompt)
         return response.text
 
     def download_youtube_transcript(self, video_id:str):
@@ -89,6 +80,8 @@ class Youtube:
         cleaned_text = " ".join(" ".join(snippet.text for snippet in fetched_transcript).replace(",", "").split())
         response = self.get_most_important_section(cleaned_text, gemini).strip().lower()
         time_stamps = [0, 0]
+        transcript_segment = []
+        
         for snippet in fetched_transcript:
             chunk = snippet.text
             if chunk.strip().lower() in response:
@@ -96,9 +89,14 @@ class Youtube:
                     time_stamps[0] = snippet.start
                 else:
                     time_stamps[1] = snippet.start + snippet.duration
-                
-        self.download_youtube_chunk(video_id, time_stamps[0], time_stamps[1], "chunks")
-         
+                transcript_segment.append({
+                    "text": snippet.text,
+                    "start": snippet.start,
+                    "duration": snippet.duration
+                })
+        brainrot_video_path = os.path.join("src/backend/services/downloads", os.listdir("src/backend/services/downloads")[random.randint(0, len(os.listdir("src/backend/services/downloads")) - 1)])
+        self.download_youtube_chunk(video_id, time_stamps[0], time_stamps[1], "src/backend/services/chunks", transcript_segment, overlay_video_path=brainrot_video_path)
+   
     def process_transcript(self, video_id:str, target_str:str, transcript:list[dict], co_client:Cohere) -> list[VideoSegment]:
         # The transcript is a list of dictionaries, not an object with snippets attribute
         snippets = transcript
