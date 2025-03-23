@@ -1,16 +1,19 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SearchIcon } from "lucide-react";
+import { SearchIcon, ChevronUpIcon, ChevronDownIcon } from "lucide-react";
 import VideoCard from "@/components/ui-custom/VideoCard";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 const VideoSnippets = () => {
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const videoRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Sample data for videos
   const videos = [
@@ -83,75 +86,153 @@ const VideoSnippets = () => {
   // Get all unique subjects for tabs
   const subjects = ["all", ...Array.from(new Set(videos.map(video => video.subject)))];
 
-  // Filter videos based on selected subject
-  const filteredVideos = selectedSubject === "all" 
-    ? videos 
-    : videos.filter(video => video.subject === selectedSubject);
+  // Filter videos based on selected subject and search query
+  const filteredVideos = videos
+    .filter(video => selectedSubject === "all" || video.subject === selectedSubject)
+    .filter(video => video.title.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  // Initialize refs array for each video
+  useEffect(() => {
+    videoRefs.current = Array(filteredVideos.length).fill(null);
+  }, [filteredVideos.length]);
+
+  // Improved scroll to video function with debounce
+  const scrollToVideo = useCallback((index: number) => {
+    if (index < 0 || index >= videoRefs.current.length || !containerRef.current) {
+      return;
+    }
+    
+    const targetElement = videoRefs.current[index];
+    
+    if (!targetElement) {
+      console.warn(`Video element at index ${index} not found`);
+      return;
+    }
+    
+    // Get container dimensions
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const elementRect = targetElement.getBoundingClientRect();
+    
+    // Calculate the scroll position to center the element
+    const offset = elementRect.top - containerRect.top - 
+      (containerRect.height / 2 - elementRect.height / 2) + 
+      containerRef.current.scrollTop;
+    
+    // Scroll with smooth behavior
+    containerRef.current.scrollTo({
+      top: offset,
+      behavior: "smooth"
+    });
+    
+    // Add visual indicator
+    targetElement.classList.add("focus-ring");
+    setTimeout(() => {
+      targetElement.classList.remove("focus-ring");
+    }, 800);
+    
+  }, []);
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent default behavior for arrow keys
+      if (["ArrowDown", "ArrowUp", "Enter"].includes(e.key)) {
+        e.preventDefault();
+      }
+      
+      if (e.key === 'ArrowDown') {
+        setActiveIndex(prev => {
+          const newIndex = Math.min(prev + 1, filteredVideos.length - 1);
+          if (newIndex !== prev) {
+            console.log(`Selected video ${filteredVideos[newIndex].id}`);
+            // Important: Use setTimeout to ensure the DOM has updated
+            setTimeout(() => scrollToVideo(newIndex), 0);
+          }
+          return newIndex;
+        });
+      } else if (e.key === 'ArrowUp') {
+        setActiveIndex(prev => {
+          const newIndex = Math.max(prev - 1, 0);
+          if (newIndex !== prev) {
+            console.log(`Selected video ${filteredVideos[newIndex].id}`);
+            // Important: Use setTimeout to ensure the DOM has updated
+            setTimeout(() => scrollToVideo(newIndex), 0);
+          }
+          return newIndex;
+        });
+      } else if (e.key === 'Enter' && activeIndex >= 0) {
+        // Handle video playback with Enter key
+        console.log(`Play video ${filteredVideos[activeIndex].id}`);
+        
+        // Call the video playing logic here
+        // For example: playVideo(filteredVideos[activeIndex].id);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filteredVideos, activeIndex, scrollToVideo]);
 
   return (
     <AppShell>
       <div className="flex flex-col h-full">
-        {/* Header */}
+        {/* Header with search */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
           className="p-4 sm:p-6 border-b"
         >
-          <div className="mb-4">
-            <h1 className="text-2xl font-bold tracking-tight">Video Snippets</h1>
-            <p className="text-muted-foreground mt-1">
-              Watch AI-generated video explanations of your notes
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Video Snippets</h1>
+              <p className="text-muted-foreground mt-1">
+                Watch AI-generated video explanations of your notes
+              </p>
+            </div>
+            
+            
           </div>
           
-          {/* Subject Tabs */}
-          <Tabs 
-            defaultValue="all" 
-            value={selectedSubject}
-            onValueChange={setSelectedSubject}
-            className="w-full"
-          >
-            <TabsList className="w-full h-auto flex gap-1 overflow-x-auto pb-2 justify-start bg-transparent">
-              {subjects.map((subject) => (
-                <TabsTrigger
-                  key={subject}
-                  value={subject}
-                  className={cn(
-                    "px-4 py-2 rounded-full text-sm capitalize whitespace-nowrap",
-                    selectedSubject === subject 
-                      ? "bg-primary text-primary-foreground" 
-                      : "bg-muted hover:bg-muted/80"
-                  )}
-                >
-                  {subject}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
         </motion.div>
         
-        {/* Search (optional) */}
-        <div className="px-4 sm:px-6 py-2 border-b">
-          <div className="relative">
-            <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input 
-              placeholder="Search videos..." 
-              className="pl-9"
-            />
-          </div>
-        </div>
-        
         {/* Videos Feed - Vertical scrolling container */}
-        <div className="flex-1 overflow-y-auto py-4 px-0 sm:px-2">
-          <div className="max-w-sm mx-auto space-y-4">
+        <div 
+          ref={containerRef}
+          className="flex-1 overflow-y-auto py-4 px-0 sm:px-2 scroll-smooth"
+        >
+          <div className="max-w-sm mx-auto space-y-6">
             {filteredVideos.map((video, index) => (
               <motion.div
                 key={video.id}
+                ref={el => videoRefs.current[index] = el}
                 initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                className="shadow-md rounded-lg overflow-hidden"
+                animate={{ 
+                  opacity: 1, 
+                  y: 0,
+                  scale: activeIndex === index ? 1.02 : 1,
+                  transition: { 
+                    duration: 0.3, 
+                    delay: index * 0.05,
+                    scale: { duration: 0.15 }
+                  }
+                }}
+                className={cn(
+                  "shadow-md rounded-lg overflow-hidden transition-all duration-200",
+                  activeIndex === index 
+                    ? "ring-2 ring-primary ring-offset-2 shadow-lg" 
+                    : "hover:ring-1 hover:ring-primary/50"
+                )}
+                onClick={() => {
+                  setActiveIndex(index);
+                  console.log(`Selected video ${video.id}`);
+                  // Add any additional selection actions here
+                }}
+                onDoubleClick={() => {
+                  console.log(`Play video ${video.id}`);
+                  // Add your video playing logic here
+                }}
+                onMouseEnter={() => setActiveIndex(index)}
               >
                 <VideoCard
                   title={video.title}
@@ -159,12 +240,26 @@ const VideoSnippets = () => {
                   duration={video.duration}
                   views={video.views}
                   index={index}
-                  onClick={() => console.log(`Play video ${video.id}`)}
+                  active={activeIndex === index}
+                  onClick={() => {
+                    // Single click handler for card
+                    console.log(`Selected video ${video.id}`);
+                  }}
+                  onPlay={() => {
+                    // Play button handler for card
+                    console.log(`Play video ${video.id}`);
+                    // Add your video playing logic here
+                  }}
                   className="aspect-[9/16] h-full"
                 />
               </motion.div>
             ))}
           </div>
+        </div>
+        
+        {/* Keyboard navigation hint */}
+        <div className="py-2 px-4 bg-muted/50 text-center text-sm text-muted-foreground">
+          <p>Use <kbd className="px-1 py-0.5 bg-background rounded border">↑</kbd> and <kbd className="px-1 py-0.5 bg-background rounded border">↓</kbd> arrow keys to navigate videos. Press <kbd className="px-1 py-0.5 bg-background rounded border">Enter</kbd> to play.</p>
         </div>
       </div>
     </AppShell>
