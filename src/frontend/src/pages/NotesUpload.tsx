@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { getAuth } from "firebase/auth";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +45,14 @@ const NotesUpload = () => {
   };
 
   const handleUpload = async () => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      setUploadStatus({ success: false, message: "You must be logged in to upload." });
+      return;
+    }
+
     const newErrors: typeof errors = {};
     if (!title.trim()) newErrors.title = "Title is required";
     if (!selectedCourse) newErrors.course = "Course must be selected";
@@ -52,45 +61,19 @@ const NotesUpload = () => {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    // Create FormData object to handle file upload
     const formData = new FormData();
-    formData.append('file', uploadedFile);
-    formData.append('title', title);
-    formData.append('courseId', selectedCourse || '');
+    formData.append("file", uploadedFile);
+    formData.append("name", title);
+    formData.append("user_id", user.uid); // Firebase UID
     if (videoUrl.trim()) {
-      formData.append('videoUrl', videoUrl);
+      formData.append("video_url", videoUrl);
     }
 
-    // Create JSON payload for additional data
-    const payloadJson = JSON.stringify({
-      material: {
-        text: null,
-        course_id: Number(selectedCourse),
-        doc_id: 1, // TODO: replace with actual doc_id
-        embedding: [], // TODO: generate embedding
-      },
-      metadata: {
-        user_id: 1, // TODO: replace with actual user ID
-        created_at: new Date().toISOString(),
-      },
-      video: videoUrl.trim() ? {
-        video_id: videoUrl,
-        user_id: 1, // TODO: replace with actual user ID
-        length: 0, // TODO: replace with video length if known
-        created_at: new Date().toISOString(),
-      } : undefined
-    });
-    formData.append('payload', payloadJson);
-
     try {
-      // Show loading state
       setIsUploading(true);
-      
-      // Make API call to upload endpoint
-      const response = await fetch('/api/notes/upload', {
-        method: 'POST',
+      const response = await fetch("http://localhost:8000/upload-material/", {
+        method: "POST",
         body: formData,
-        // Don't set Content-Type header, browser will set it with boundary for FormData
       });
 
       if (!response.ok) {
@@ -99,16 +82,14 @@ const NotesUpload = () => {
 
       const result = await response.json();
       console.log("Upload successful:", result);
-      
-      // Reset form after successful upload
+
       setTitle("");
       setSelectedCourse(null);
       setUploadedFile(null);
       setImagePreview(null);
       setVideoUrl("");
-      
-      // Show success message
       setUploadStatus({ success: true, message: "Notes uploaded successfully!" });
+
     } catch (error) {
       console.error("Upload error:", error);
       setUploadStatus({ 
